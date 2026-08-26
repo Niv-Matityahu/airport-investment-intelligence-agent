@@ -1,0 +1,50 @@
+{
+  "built_at_utc": "2026-08-26T12:26:47.173854+00:00",
+  "n_airports": 478,
+  "n_with_enplanements": 471,
+  "n_with_ontime": 332,
+  "ontime_months": [
+    "2024_2",
+    "2024_7",
+    "2024_10"
+  ],
+  "sources": {
+    "airports": "https://davidmegginson.github.io/ourairports-data/airports.csv",
+    "runways": "https://davidmegginson.github.io/ourairports-data/runways.csv",
+    "faa_enplanements": "https://www.faa.gov/airports/planning_capacity/passenger_allcargo_stats/passenger/ARP-cy2024-all-enplanements.xlsx",
+    "bts_ontime_template": "https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_{month}.zip"
+  },
+  "assumptions": {
+    "long_haul_miles": 2000,
+    "medium_haul_miles": 700,
+    "delay_threshold_min": 15,
+    "long_haul_scope": "Domestic mainline flights only. The BTS On-Time dataset covers US carriers with >=0.5% of domestic scheduled passenger revenue; international segments are NOT included, so long-haul % understates intercontinental activity at gateway airports.",
+    "enplanements_year": "FAA ACAIS CY2024 vs CY2023",
+    "congestion_basis": "share of departures delayed >15 min + cancellation rate + mean departure delay, from sampled months"
+  },
+  "columns": [
+    "iata",
+    "icao",
+    "name",
+    "city",
+    "iso_region",
+    "state",
+    "lat",
+    "lon",
+    "type",
+    "num_runways",
+    "hub_size",
+    "enplanements_2024",
+    "enplanements_2023",
+    "pax_growth_pct",
+    "departures_sampled",
+    "pct_delayed_15",
+    "mean_dep_delay_min",
+    "pct_cancelled",
+    "long_haul_pct",
+    "mean_stage_length_mi",
+    "n_destinations",
+    "departures_per_month",
+    "dep_per_runway_month"
+  ]
+}

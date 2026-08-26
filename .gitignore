@@ -1,0 +1,17 @@
+# Large raw downloads — rebuilt by data/build_dataset.py (the cached snapshot IS committed)
+data/raw/
+data/*.log
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
