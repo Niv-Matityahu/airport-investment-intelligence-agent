@@ -6,7 +6,7 @@ where demand is large and growing but capacity is already strained, so new
 capacity converts into more served flights and passengers.
 
 Built for the Forward Deployed Engineer exercise. **Design write-up:**
-[`docs/slides.html`](docs/slides.html) (12-slide deck — arrow keys, press F) ·
+[`docs/slides.html`](docs/slides.html) (13-slide deck — arrow keys, press F) ·
 [`docs/design.html`](docs/design.html) (visual one-pager) ·
 [`docs/DESIGN.md`](docs/DESIGN.md) (plain text). All open in a browser.
 

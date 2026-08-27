@@ -167,8 +167,8 @@
     capacity pays off most</strong> — big, growing, <em>and</em> already jammed.</p>
     <div class="kpis">
       <div><div class="v g">478</div><div class="k">airports scored</div></div>
-      <div><div class="v">9</div><div class="k">agent tools</div></div>
-      <div><div class="v">6</div><div class="k">public data sources</div></div>
+      <div><div class="v">7</div><div class="k">agent tools</div></div>
+      <div><div class="v">4</div><div class="k">public data sources</div></div>
       <div><div class="v">0</div><div class="k">numbers the LLM invents</div></div>
     </div>
   </section>
@@ -250,7 +250,7 @@
       <div class="step">
         <div class="num">4</div>
         <div class="bd"><div class="t">Compute the facts</div>
-          <div class="ex"><code>scoring.py</code> returns code-computed numbers (or a live API for "right now")</div></div>
+          <div class="ex"><code>scoring.py</code> returns code-computed numbers from the snapshot</div></div>
         <div class="tg code">CODE</div>
       </div>
       <div class="step">
@@ -268,14 +268,14 @@
       </div>
     </div>
     <p class="muted" style="font-size:.9rem; margin-top:14px">Steps 2–5 loop up to ~8 rounds for
-    multi-part questions. Heavy data comes from a <strong>cached snapshot</strong> (fast, reproducible);
-    live APIs add freshness. One LLM seam → Gemini and Claude are swappable.</p>
+    multi-part questions. All data comes from a <strong>cached snapshot</strong> — fast, and the same
+    answer every run. One LLM seam → Gemini and Claude are swappable.</p>
   </section>
 
   <!-- 6 TOOLS -->
   <section class="slide">
     <div class="kick">The toolbox</div>
-    <h2>9 tools — in plain words</h2>
+    <h2>7 tools — in plain words</h2>
     <p class="muted" style="margin:-.2em 0 0">The model can't touch the data directly. It gets every
     fact by calling one of these — and each returns numbers computed in code.</p>
     <div class="tools">
@@ -297,19 +297,41 @@
       <div class="tl-t"><div class="nm">unmet_demand</div>
         <div class="ds">Flights an airport is turning away because it's full — and why.</div>
         <span class="t2 an">analyze</span></div>
-      <div class="tl-t"><div class="nm">live_traffic</div>
-        <div class="ds">Planes near an airport <em>right now</em> (OpenSky, live).</div>
-        <span class="t2 lv">live</span></div>
-      <div class="tl-t"><div class="nm">bts_traffic</div>
-        <div class="ds">Official government passenger counts — a live cross-check (BTS).</div>
-        <span class="t2 lv">live</span></div>
       <div class="tl-t"><div class="nm">universe_summary</div>
         <div class="ds">What data exists and what its limits are.</div>
         <span class="t2 me">meta</span></div>
     </div>
+    <p class="muted" style="font-size:.9rem; margin-top:16px">One <span class="t2 an" style="margin:0">find</span>
+    tool, five <span class="t2 an" style="margin:0">analyze</span> tools, one
+    <span class="t2 me" style="margin:0">meta</span> tool — every number they return is computed in code,
+    never by the model.</p>
   </section>
 
-  <!-- 7 AI vs CODE -->
+  <!-- 7 DATA SOURCES -->
+  <section class="slide">
+    <div class="kick">Where the numbers come from</div>
+    <h2>4 public data sources — in plain words</h2>
+    <p class="muted" style="margin:-.2em 0 0">Everything is pulled from open government &amp; aviation
+    data into one snapshot — so answers are fast and the same every time.</p>
+    <div class="cards two">
+      <div class="c"><h3>🗺️ OurAirports</h3>
+        <p class="muted">Where each airport is, and how many runways it has → the map, and how
+        <em>full</em> the runways run.</p></div>
+      <div class="c"><h3>👥 FAA passenger data</h3>
+        <p class="muted">How many people flew in 2024 vs 2023 → an airport's <em>size</em> and its
+        <em>growth</em>.</p></div>
+      <div class="c"><h3>⏱️ BTS flight records</h3>
+        <p class="muted">Delays, cancellations, and how far each flight goes → how <em>jammed</em> it is,
+        plus long-haul %.</p></div>
+      <div class="c"><h3>🏛️ FAA capacity rules</h3>
+        <p class="muted">Which airports the FAA legally caps flights at (JFK/LGA/DCA/EWR) → the strongest
+        "no room" signal.</p></div>
+    </div>
+    <p class="muted" style="font-size:.9rem; margin-top:14px">All <strong>public</strong>. Downloaded once
+    and joined into <code>data/airport_snapshot.parquet</code> — reproducible and demo-safe.</p>
+  </section>
+
+  <!-- 8 AI vs CODE -->
   <section class="slide">
     <div class="kick">Where AI is used — and where it isn't</div>
     <h2>Language from AI · numbers from code</h2>
@@ -388,7 +410,7 @@
       <div class="c"><h3 style="margin:.1em 0 .4em">Hardened</h3>
         <ul style="margin:0"><li>No fabricated numbers (grounding guard)</li>
           <li>Corrects false premises &amp; superlatives</li>
-          <li>Live-API outage → degrades, no crash</li></ul></div>
+          <li>Reproducible — same answer every run</li></ul></div>
     </div>
     <p style="margin-top:16px">Stress-tested with <strong>~90 adversarial prompts</strong> — jailbreaks
     refused, out-of-scope declined, ambiguity resolved, memory works. Invariants locked by unit tests.</p>
@@ -426,7 +448,7 @@
   <div class="dots" id="dots"></div>
   <div class="nav">
     <button id="prev" aria-label="Previous">‹</button>
-    <span class="count" id="count">1 / 12</span>
+    <span class="count" id="count">1 / 13</span>
     <button id="next" aria-label="Next">›</button>
   </div>
 </div>

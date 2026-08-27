@@ -13,13 +13,13 @@ import re
 
 import numpy as np
 
-from . import data_layer, live_api, scoring
+from . import data_layer, scoring
 
 # Tools that return code-computed airport metrics. If a turn states airport
 # figures without calling one of these, the answer is ungrounded (fabricated).
 METRIC_TOOLS = {
     "airport_report", "rank_airports", "compare_airports", "unmet_demand",
-    "long_haul_profile", "bts_traffic", "live_traffic", "universe_summary",
+    "long_haul_profile", "universe_summary",
 }
 
 # Matches airport-specific QUANTITATIVE claims that MUST come from a tool:
@@ -167,35 +167,6 @@ TOOL_SPECS = [
         },
     },
     {
-        "name": "live_traffic",
-        "description": (
-            "Real-time aircraft near an airport from the OpenSky live API (a coarse "
-            "current-activity gauge, not scheduled capacity). Best-effort; may be "
-            "unavailable. Use only when the user asks about live/current traffic."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {"iata": {"type": "string"}},
-            "required": ["iata"],
-        },
-    },
-    {
-        "name": "bts_traffic",
-        "description": (
-            "Official BTS T-100 DOMESTIC passengers + departures for ONE airport "
-            "(calendar 2024), fetched LIVE from the BTS ArcGIS REST API. An "
-            "independent, authoritative cross-check on the cached figures. Note: "
-            "domestic only, so it runs lower than total enplanements at "
-            "international gateways (SFO, JFK). Use when the user wants official/"
-            "live traffic numbers or to double-check a figure."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {"iata": {"type": "string"}},
-            "required": ["iata"],
-        },
-    },
-    {
         "name": "universe_summary",
         "description": (
             "What the agent can see: airport count, data coverage, the sampled "
@@ -259,12 +230,6 @@ def _dispatch(name: str, i: dict) -> dict:
     if name == "unmet_demand":
         r = scoring.unmet_demand(i["iata"])
         return r or {"error": f"no airport found for IATA '{i['iata']}'"}
-
-    if name == "live_traffic":
-        return live_api.nearby_traffic(i["iata"])
-
-    if name == "bts_traffic":
-        return live_api.bts_t100_traffic(i["iata"])
 
     if name == "universe_summary":
         return scoring.universe_summary()

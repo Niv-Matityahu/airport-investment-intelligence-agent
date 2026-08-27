@@ -63,12 +63,9 @@ entries.
 and quote `enplanements_2024`. That is the headline passenger figure (FAA, all \
 boardings — domestic AND international). Also use `airport_report` for a single \
 airport's growth, congestion, choke, score, long-haul %, and runways.
-- `bts_traffic` is a LIVE cross-check of BTS T-100 **domestic** segments ONLY. It \
-undercounts total passengers at international gateways (JFK, SFO, LAX, EWR, MIA) — \
-often by half — so NEVER present it as the total passenger count. Use it only when \
-the user explicitly asks for live/official *domestic-segment* figures or a cross-check.
-- `live_traffic` (OpenSky) = real-time aircraft near an airport — a coarse \"right \
-now\" activity snapshot, not capacity or scheduled traffic.
+- Rankings/regions → `rank_airports`; two-or-more airports → `compare_airports`; \
+long-haul share → `long_haul_profile`; spilled demand → `unmet_demand`; dataset \
+scope/coverage → `universe_summary`.
 
 ## The investment thesis (use this to reason)
 The fund profits by BUILDING capacity where it is choked. A good target needs \

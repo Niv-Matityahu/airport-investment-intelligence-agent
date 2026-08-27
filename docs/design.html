@@ -151,8 +151,8 @@
     <em>and</em> already jammed, so new capacity turns straight into more flights and passengers.</p>
     <div class="kpi">
       <div><div class="v cy">478</div><div class="k">US airports scored</div></div>
-      <div><div class="v">9</div><div class="k">agent tools</div></div>
-      <div><div class="v">6</div><div class="k">public data sources</div></div>
+      <div><div class="v">7</div><div class="k">agent tools</div></div>
+      <div><div class="v">4</div><div class="k">public data sources</div></div>
       <div><div class="v">0</div><div class="k">numbers the LLM invents</div></div>
     </div>
     <p class="lead">It answers questions like <span class="cyan">"Which New England airports are
@@ -244,8 +244,8 @@
   <!-- 3. ARCHITECTURE -->
   <h2><span class="n">3</span>Architecture &amp; flow</h2>
   <p class="sub">Three clean layers. The LLM <strong>plans and explains</strong>; <strong>code decides
-  every number</strong>; heavy analytics read a <strong>cached snapshot</strong> (fast, reproducible)
-  while two <strong>live public APIs</strong> add freshness.</p>
+  every number</strong>; all analytics read a <strong>cached snapshot</strong> built once from public
+  data — fast, and the same answer every run.</p>
 
   <div class="card">
     <div class="flow">
@@ -253,7 +253,7 @@
       <div class="arrow">▸</div>
       <div class="node accent"><div class="t">🤖 Agent loop</div><div class="d">Gemini / Claude picks tools, runs ≤8 rounds, narrates</div></div>
       <div class="arrow">▸</div>
-      <div class="node"><div class="t">🧮 Deterministic engine<br>+ 🛰️ live APIs</div><div class="d">scoring.py computes; OpenSky / BTS return live facts</div></div>
+      <div class="node"><div class="t">🧮 Deterministic engine</div><div class="d">scoring.py computes every number from the snapshot</div></div>
       <div class="arrow">▸</div>
       <div class="node accent"><div class="t">✅ Grounded answer</div><div class="d">every figure traced to a tool — no invented stats</div></div>
     </div>
@@ -285,8 +285,6 @@
     <tr><td>FAA ACAIS (CY2024)</td><td>public file</td><td>passengers 2024 vs 2023</td><td><span class="cyan">Scale + Demand</span></td></tr>
     <tr><td>BTS On-Time (2024)</td><td>public file</td><td>delays, cancellations, route distance</td><td><span class="cyan">Choke</span> · long-haul</td></tr>
     <tr><td>FAA capacity designations</td><td>curated (Level-3, Core-30)</td><td>slot-controlled + Core-30 flags</td><td><span class="cyan">Choke</span> bonus</td></tr>
-    <tr><td>OpenSky</td><td><b>live API</b></td><td>aircraft near an airport now</td><td>live "right now" tool</td></tr>
-    <tr><td>BTS T-100</td><td><b>live API</b></td><td>official domestic segments</td><td>live cross-check</td></tr>
   </table>
   </div>
 
@@ -329,7 +327,7 @@
 
   <!-- 5. TOOLS -->
   <h2><span class="n">5</span>Tools &amp; logic</h2>
-  <p class="sub">The agent has <strong>9 typed tools</strong>. Each returns code-computed facts; the model
+  <p class="sub">The agent has <strong>7 typed tools</strong>. Each returns code-computed facts; the model
   only chooses which to call and how to phrase the result.</p>
 
   <div class="toolgrid">
@@ -339,15 +337,13 @@
     <div class="tool"><div class="nm">compare_airports</div><div class="ds">side-by-side on all metrics</div></div>
     <div class="tool"><div class="nm">long_haul_profile</div><div class="ds">% long-haul, stage length, destinations</div></div>
     <div class="tool"><div class="nm">unmet_demand</div><div class="ds">spilled-demand proxy + the "why"</div></div>
-    <div class="tool"><div class="nm">live_traffic</div><div class="ds">real-time aircraft nearby (OpenSky)</div></div>
-    <div class="tool"><div class="nm">bts_traffic</div><div class="ds">live official domestic segments (BTS)</div></div>
     <div class="tool"><div class="nm">universe_summary</div><div class="ds">dataset scope, coverage, assumptions</div></div>
   </div>
 
   <div class="key"><b>The guardrail candidates miss:</b> a structural <b>grounding check</b>. If the model
   ever writes a figure (a score, %, passenger count) <em>without</em> having called a data tool that turn,
-  the loop <b>refuses the answer and forces a tool call</b>. Live APIs fail closed — an OpenSky outage
-  returns "unavailable", never a made-up number. This is what makes an investment tool trustworthy.</div>
+  the loop <b>refuses the answer and forces a tool call</b> — so it can never make up a number.
+  This is what makes an investment tool trustworthy.</div>
 
   <!-- 6. AI vs CODE -->
   <h2><span class="n">6</span>Where AI is used — and where it isn't</h2>
@@ -408,7 +404,7 @@
     <div class="card"><h4 style="margin-top:0">The graded core (read this)</h4>
       <ul class="clean">
         <li><code>scoring.py</code> — the choke-gated KPI, ~pure functions</li>
-        <li><code>tools.py</code> — 9 tools + the grounding guard</li>
+        <li><code>tools.py</code> — 7 tools + the grounding guard</li>
         <li><code>agent.py</code> — the LLM loop + thesis prompt</li>
       </ul>
       <p class="small muted" style="margin:6px 0 0">One idea, cleanly expressed. If you read one file,
@@ -430,7 +426,7 @@
   <div class="tblwrap">
   <table>
     <tr><th>Choice</th><th>Why</th><th>Cost / next step</th></tr>
-    <tr><td>Cached snapshot + 2 live APIs</td><td>fast, reproducible, demo-safe</td><td>data is CY2024; refresh on a schedule</td></tr>
+    <tr><td>Cached snapshot from public data</td><td>fast, reproducible, demo-safe</td><td>data is CY2024; refresh on a schedule (live APIs are a documented extension)</td></tr>
     <tr><td>Choke as a <em>gate</em>, not a weight</td><td>encodes the thesis by construction</td><td>0.60 floor is a judgment call (tunable in config)</td></tr>
     <tr><td>Demand = 1-year growth</td><td>simplest available signal</td><td>noisy; a multi-year trend / FAA TAF forecast is sturdier — <strong>first upgrade</strong></td></tr>
     <tr><td>Median-estimate missing choke</td><td>keeps all airports scoreable</td><td>slightly generous; could exclude or estimate low</td></tr>

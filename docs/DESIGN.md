@@ -43,20 +43,22 @@ same tools — nice to have, but not the substance. If you read one file, read
 ```
    user (chat) ─► Agent loop (Claude / Gemini, tool-use) ─► narrates, follows up
                         │ typed tool calls
-        ┌───────────────┼─────────────────────────────┐
-   deterministic scoring│                         live public APIs
-   (src/scoring.py)     │                         (src/live_api.py)
-   EOS + choke gate,    │                    OpenSky (real-time flights)
-   unmet demand, ranking│                    BTS T-100 (official 2024 traffic)
-        └──────┬────────┘
+                        ▼
+              deterministic scoring  (src/scoring.py)
+              EOS + choke gate, unmet demand, ranking
+                        │
+                        ▼
         cached snapshot  data/airport_snapshot.parquet
         (built offline from public data — data/build_dataset.py)
 ```
 
-**Hybrid data strategy.** Heavy analytics read a cached snapshot built once from
-public datasets (fast, reproducible, demo-safe). Two genuine **live public REST
-APIs** are wired as tools for freshness/cross-checks. This satisfies "use public
-APIs to gather data" while keeping the agent fast and robust.
+**Snapshot strategy.** All analytics read a cached snapshot built once from public
+datasets — fast, reproducible, and demo-safe (the same answer every run). The
+"use public APIs to gather data" requirement is met by the build pipeline
+(`data/build_dataset.py`), which pulls from public FAA / BTS / OurAirports sources.
+*(Two live public REST APIs — OpenSky + BTS T-100 — are implemented in
+`src/live_api.py` but left out of the MVP tool set to keep it simple; re-enabling
+them is a one-line change.)*
 
 **Provider-agnostic.** The LLM sits behind `src/llm.py`; `AirportAgent` (Claude)
 and `GeminiAirportAgent` share the same tools, prompt, and scoring.
@@ -71,8 +73,9 @@ and `GeminiAirportAgent` share the same tools, prompt, and scoring.
 | **FAA ACAIS CY2024** | public file | passengers 2024/2023, hub size | **scale** + **demand** pillars |
 | **BTS On-Time** (sampled 2024) | public file | per-flight delays, cancels, route distance | **choke** signal + long-haul % |
 | **FAA capacity designations** | curated (14 CFR 93; FAA Core 30) | slot-controlled + Core-30 flags | **choke** — the authoritative bottleneck marker |
-| **OpenSky** | **live REST API** | real-time aircraft near an airport | live activity tool |
-| **BTS T-100 domestic** | **live REST API** (ArcGIS) | official 2024 passengers/departures | live authoritative cross-check |
+
+*(Live extensions, coded but not in the MVP tool set: **OpenSky** real-time aircraft
+and **BTS T-100** official domestic segments — see `src/live_api.py`.)*
 
 **Sources we deliberately did *not* add (and why):**
 
@@ -146,7 +149,7 @@ a forecast).
 the question, resolves ambiguous names (`resolve_airport`), picks tools + args,
 sequences multi-step work, and explains reasoning + methodology. The system
 prompt forbids stating any figure from memory — if a tool lacks it, the agent
-says so. All airport facts come from `scoring.py` / the live APIs. This satisfies
+says so. All airport facts come from `scoring.py`. This satisfies
 "deterministic scoring, not only LLM output" and prevents hallucinated
 statistics — the failure mode that would make an investment tool untrustworthy.
 
@@ -200,7 +203,7 @@ data/build_dataset.py     offline build: download → join → derive → parque
 src/faa_designations.py   FAA slot-control + Core-30 lists (curated, cited)
 src/scoring.py            choke-gated EOS, pillars, unmet demand, ranking   ← core IP
 src/data_layer.py         snapshot load, airport-name resolver, region lookup
-src/live_api.py           OpenSky + BTS T-100 live REST APIs
+src/live_api.py           OpenSky + BTS T-100 live APIs (dormant — not in MVP tools)
 src/tools.py              tool schemas + deterministic dispatch
 src/agent.py              Claude tool-use loop + thesis system prompt
 src/agent_gemini.py       Gemini function-calling loop (same tools/prompt)
