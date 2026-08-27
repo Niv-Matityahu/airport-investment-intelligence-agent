@@ -18,6 +18,24 @@ turning flights away. So a good target needs **three conditions at once**:
 
 Everything below is built to find the **intersection** of the three.
 
+### What the score is — and is NOT (the one misread to avoid)
+EOS ranks **where new capacity would be most productive** — a *precondition* for
+profit, not profit itself. It deliberately does **not** model construction cost
+(capex), revenue-per-passenger, airline fee structures, or ROI — those are
+deal-specific and can't be screened from public data. Read a high EOS as *"this
+airport most needs capacity and would convert a build into served flights and
+passengers"* — the **shortlist for financial diligence**, not the diligence.
+Treating "Expansion Opportunity Score" as "expected profit" is the single
+dangerous misread, so the agent is explicitly instructed to draw this line when
+asked (see `src/agent.py`, and it is *not investment advice*).
+
+### Scope for one day (what got the effort, and why)
+The graded core is the **deterministic KPI (`scoring.py`) + the grounded agent**;
+that is where the reasoning lives and where time was spent. The dashboard, map,
+full-screen ranking, and voice are **optional presentation polish** on top of the
+same tools — nice to have, but not the substance. If you read one file, read
+`src/scoring.py`.
+
 ---
 
 ## 1. Architecture
@@ -94,13 +112,22 @@ This makes the score match "profitable bottleneck" **by construction**, not by
 luck — a weighted sum alone would let scale+growth inflate an airport that
 doesn't actually need a build.
 
-**Proof it works (from the live data):**
-- Top candidates — CLT, DFW, PHX, SAN, DEN, PHL, **LGA**, MIA, **DCA**, ORD — are
-  all high-choke big hubs (choke 89th–100th percentile).
-- The FAA **slot-controlled** airports (LGA, DCA, JFK, EWR) rise into the top on
-  the slot bonus — exactly the "flights are capped, no room" bottlenecks.
-- The gate **demotes** big-but-unchoked airports: OGG/Maui (scale 89th, choke
-  28th) falls from base 37 → EOS 27 via a 0.71 gate.
+**Validation — face-validity + sensitivity (a ranking like this can't be
+"proven" against ground truth, so we check it behaves):**
+- **Face validity:** top candidates — CLT, DFW, PHX, SAN, DEN, PHL, **LGA**, MIA,
+  **DCA**, ORD — are all high-choke big hubs (choke 89th–100th percentile). The
+  FAA **slot-controlled** airports (LGA, DCA, JFK, EWR) rise on the slot bonus —
+  exactly the "flights are capped, no room" bottlenecks.
+- **The gate does its job:** it **demotes** big-but-unchoked airports — OGG/Maui
+  (scale 89th, choke 28th) falls from base 37 → EOS 27 via a 0.71 gate. A
+  pure weighted sum would rank it far higher.
+- **Guarded by tests:** `tests/test_scoring.py` asserts the invariants that make
+  the thesis hold — a high EOS *requires* real choke, the gate demotes the
+  un-choked, slot-control raises choke — so a future weight tweak can't silently
+  break the logic.
+- **Sensitivity is tunable, not hidden:** all weights + the 0.60 gate floor live
+  in `src/config.py`; the ordering of the top hubs is stable across a reasonable
+  floor band (≈0.5–0.7) because they lead on *both* choke and scale.
 
 Every score is fully decomposable — `airport_report` returns each pillar's
 percentile, weight, contribution, the base, and the gate, so the agent can
@@ -134,23 +161,35 @@ capability it can't deliver.
 
 ## 5. Key tradeoffs, assumptions & uncertainty (surfaced, not hidden)
 
-1. **Choke gate weighting** encodes the thesis (choke is necessary). Floor 0.60
-   is a judgment call — all weights/floor live in `src/config.py` for sensitivity
-   analysis.
-2. **Slot-control list is curated** (JFK, LGA, DCA, EWR — FAA Level 3 as of 2024)
+1. **Not a profit/ROI model** (see §0): EOS ranks capacity *need/productivity*, a
+   precondition for profit — no capex, revenue, or fee modeling. Biggest scoping
+   line; the agent states it when asked.
+2. **The demand pillar is a SINGLE YEAR of growth** (FAA CY24 vs CY23) — this is
+   the **weakest pillar**. One year is noisy and mean-reverting: a single new
+   route, a post-COVID rebound, or a base effect can spike or sink it, and it is
+   backward-looking (not a forecast of future demand). Two things limit the
+   damage: (a) the **choke gate** means growth alone can't inflate an un-choked
+   airport, and (b) rankings apply a **~500k-passenger floor** so a tiny airport's
+   +300% can't top the list. A multi-year CAGR or an FAA TAF forward forecast
+   would be sturdier — the first analytics upgrade I'd make.
+3. **Choke gate weighting** encodes the thesis (choke is necessary). Floor 0.60
+   is a judgment call — all weights/floor live in `src/config.py` for sensitivity.
+4. **31% of airports (146/478) have no delay data** (BTS covers only carriers with
+   ≥0.5% of domestic revenue). Their choke pillar is median-imputed for the score
+   and flagged **Medium/Low** `data_confidence`; verified they do **not** reach the
+   top ranks. A more conservative choice would impute *low* (a no-data airport is
+   probably not choked) or exclude them from ranking — noted.
+5. **Slot-control list is curated** (JFK, LGA, DCA, EWR — FAA Level 3 as of 2024)
    and changes rarely; cited in `src/faa_designations.py`.
-3. **Delays mix weather/ATC with physical choke.** Mitigated by combining them
+6. **Delays mix weather/ATC with physical choke.** Mitigated by combining them
    with utilization + slot-control rather than relying on delays alone.
-4. **Long-haul % is domestic-only** (BTS On-Time scope) — understates
+7. **Long-haul % is domestic-only** (BTS On-Time scope) — understates
    intercontinental activity at gateways (SFO, JFK). Flagged in-answer.
-5. **Unmet demand is a proxy, not a forecast.** Caveats returned with every result.
-6. **Small airports** post volatile growth % on a small base → **Low** confidence,
-   and expansion rankings apply a ~500k-passenger floor by default.
-7. **Seasonality:** choke uses 3 sampled months (Feb/Jul/Oct 2024).
-8. **Scope:** US commercial airports; FAA↔IATA codes assumed to match (true for
-   major commercial airports).
-9. **Known gaps** (§2): load factor and gate/terminal capacity — documented, not
-   faked.
+8. **Unmet demand is a proxy, not a forecast.** Caveats returned with every result.
+9. **Seasonality:** choke uses 3 sampled months (Feb/Jul/Oct 2024) — Jul skews busy.
+10. **Scope:** US commercial airports; FAA↔IATA codes assumed to match (true for
+    major commercial airports). **Known data gaps** (§2): seat load-factor and
+    gate/terminal capacity — documented, not faked.
 
 ---
 

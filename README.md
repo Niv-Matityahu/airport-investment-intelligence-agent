@@ -22,11 +22,14 @@ It answers questions like:
   the score requires a bottleneck by construction (the investment thesis). Choke
   includes FAA slot-control (JFK/LGA/DCA/EWR). The LLM plans and explains; all
   numbers come from code. See [`docs/DESIGN.md`](docs/DESIGN.md) §3.
-- **Chat interface** — a dark "investment intelligence" dashboard (national
-  opportunity map + live expansion rankings) with a **floating chat widget**
-  that streams the agent's replies. **Voice input** (bonus) lets you *speak* a
-  question — Gemini transcribes the mic clip into a normal agent turn. Or use
-  the terminal CLI.
+  EOS ranks *where capacity is most productive to add* — a **precondition for
+  profit**, not an ROI estimate (no capex/revenue modeling). It's the shortlist
+  for diligence, not the diligence.
+- **Chat interface** — a **floating chat widget** (streaming replies) plus a
+  terminal CLI; **voice input** (bonus) lets you *speak* a question. The core
+  deliverable is the scoring + grounded agent; the dark dashboard (national
+  opportunity map + live rankings) is optional presentation polish on the same
+  tools.
 - **Hybrid public data** — cached snapshot from FAA + BTS + OurAirports, plus
   live OpenSky (real-time traffic) and BTS T-100 REST-API tools.
 - **Honest about itself** — a persistent *Methodology · assumptions · scope ·
