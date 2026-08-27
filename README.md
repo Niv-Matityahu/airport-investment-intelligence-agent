@@ -7,7 +7,7 @@ capacity converts into more served flights and passengers.
 
 Built for the Forward Deployed Engineer exercise. **Design write-up:**
 [`docs/slides.html`](docs/slides.html) (13-slide deck — arrow keys, press F) ·
-[`docs/design.html`](docs/design.html) (visual one-pager) ·
+[visual one-pager](docs/Airport%20Investment%20Intelligence%20Agent.html) ·
 [`docs/DESIGN.md`](docs/DESIGN.md) (plain text). All open in a browser.
 
 It answers questions like:

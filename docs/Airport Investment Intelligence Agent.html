@@ -210,9 +210,10 @@
   </div>
 
   <h3>The choke gate is the whole trick</h3>
-  <p class="sub"><span class="pill">gate = 0.60 + 0.40 × choke</span> &nbsp; The gate <strong>shrinks the
-  score when an airport isn't jammed</strong>. So an airport can't ride scale + growth to the top — it
-  needs a real bottleneck. The thesis is baked into the math, not left to the LLM.</p>
+  <p class="sub"><span class="pill">gate = 0.60 + 0.40 × choke</span>
+  <span class="small muted">(choke scaled 0→1, i.e. <code>choke_pct ÷ 100</code>)</span> &nbsp; The gate
+  <strong>shrinks the score when an airport isn't jammed</strong>. So an airport can't ride scale + growth
+  to the top — it needs a real bottleneck. The thesis is baked into the math, not left to the LLM.</p>
 
   <div class="grid2">
     <div class="card">
