@@ -207,9 +207,10 @@
     <div class="kick">The scoring logic (deterministic, not the LLM)</div>
     <h2>One number: the Expansion Opportunity Score</h2>
     <span class="pill">EOS = ( Choke 45% + Demand 30% + Scale 25% ) × Choke-gate</span>
-    <p class="muted" style="margin:.3em 0 14px">The <strong>gate</strong> = <code>0.60 + 0.40 × choke</code>
-    <span style="font-size:.85em">(choke scaled 0→1)</span> shrinks the score when an airport isn't jammed —
-    so scale + growth alone can't reach the top.</p>
+    <p class="muted" style="margin:.3em 0 14px">The <strong>gate</strong> is just a multiplier between
+    <strong>0.60 and 1.00</strong>: a fully-jammed airport keeps almost all of its score (gate ≈ 1.0),
+    while one with lots of spare room loses up to 40% (gate ≈ 0.60). So size + growth alone can't reach
+    the top — you need a real bottleneck. <span style="font-size:.82em">(gate = 0.60 + 0.40 × choke)</span></p>
     <div class="cards two">
       <div class="c"><h4 style="margin:0 0 8px">✅ Charlotte — jammed &amp; big</h4>
         <div class="r"><div class="l">Base</div><div class="track"><div class="bar" style="width:89%;background:#2a4a63">88.7</div></div></div>
