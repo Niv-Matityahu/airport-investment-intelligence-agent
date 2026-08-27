@@ -13,20 +13,40 @@ SNAPSHOT_PARQUET = DATA_DIR / "airport_snapshot.parquet"
 SNAPSHOT_META = DATA_DIR / "snapshot_meta.json"
 
 # --- Expansion Opportunity Score (EOS) --------------------------------------
-# The investment thesis: renovation/expansion pays off where demand is large
-# and growing but the airport is already capacity-constrained (congested), so
-# added capacity converts directly into more served flights & passengers.
+# Investment thesis (three conditions must CO-OCCUR): expansion pays off where
+#   1. CAPACITY CHOKE  — the airport is physically/regulatorily maxed out, so it
+#      spills flights it cannot serve (delays, cancellations, runways worked hard,
+#      FAA slot control). This is THE differentiator: no choke → no bottleneck to
+#      relieve → no fast payoff, however big the airport.
+#   2. DEMAND momentum — traffic is growing (more flights/passengers to capture).
+#   3. SCALE           — a base large enough to justify major capex.
 #
-# Four pillars, each normalised to a 0-100 national percentile, then weighted.
+# EOS = (weighted percentile blend) * CHOKE GATE, so a big, growing, but
+# UN-choked airport is dampened — the score REQUIRES choke, not just rewards it.
 # Weights must sum to 1.0 (asserted at load time).
 EOS_WEIGHTS = {
-    "congestion": 0.35,   # is it constrained NOW? (delays, cancellations)
-    "growth": 0.30,       # is demand still rising? (YoY enplanement growth)
-    "scale": 0.20,        # how big is the revenue base? (enplanements, log)
-    "utilization": 0.15,  # how hard are existing runways worked?
+    "choke": 0.45,    # capacity choke — the bottleneck (the differentiator)
+    "demand": 0.30,   # YoY passenger growth
+    "scale": 0.25,    # revenue base (enplanements, log)
 }
 
-# Weights for the composite congestion metric (before percentile-ranking).
+# Capacity-choke composite (before percentile-ranking): delays + cancellations
+# + runway utilisation. Slot-control adds a bonus (see SLOT_CHOKE_BONUS).
+CHOKE_WEIGHTS = {
+    "pct_delayed_15": 0.35,
+    "mean_dep_delay_min": 0.20,
+    "pct_cancelled": 0.15,
+    "dep_per_runway_month": 0.30,
+}
+# FAA slot-controlled airports get this added to their normalised choke (0-1)
+# before ranking — a hard "the FAA caps flights here" signal.
+SLOT_CHOKE_BONUS = 0.20
+# Choke gate: final EOS = base * (FLOOR + (1-FLOOR) * choke_pct/100).
+# FLOOR=0.6 means a zero-choke airport keeps only 60% of its base score.
+CHOKE_GATE_FLOOR = 0.60
+
+# Pure delay-based congestion (for "compare X vs Y congestion" questions — kept
+# separate from the broader choke pillar).
 CONGESTION_WEIGHTS = {
     "pct_delayed_15": 0.5,
     "mean_dep_delay_min": 0.3,

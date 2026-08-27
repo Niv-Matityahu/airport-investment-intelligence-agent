@@ -16,21 +16,31 @@ It answers questions like:
 
 ## What it does
 
-- **Deterministic scoring, not just an LLM.** An **Expansion Opportunity Score
-  (EOS)** ranks airports on four transparent, weighted, national-percentile
-  pillars — congestion, growth, scale, utilization. The LLM plans and explains;
-  all numbers come from code. See [`docs/DESIGN.md`](docs/DESIGN.md) §3.
-- **Chat interface** (Streamlit) with a live sidebar dashboard + national
-  opportunity map, or a terminal CLI.
-- **Hybrid public data** — cached snapshot from FAA + BTS + OurAirports, plus a
-  live OpenSky real-time traffic tool.
-- **Honest about itself** — surfaces assumptions, scope (US domestic), data
-  confidence, and labels proxies (e.g. "unmet demand") as such.
-- **Auditable** — every answer shows the tool calls that produced it.
+- **Deterministic scoring, not just an LLM.** A **choke-gated Expansion
+  Opportunity Score (EOS)** = (Capacity-choke 45% + Demand 30% + Scale 25%) × a
+  **choke gate**, so a big, growing, but un-choked airport *can't* rank high —
+  the score requires a bottleneck by construction (the investment thesis). Choke
+  includes FAA slot-control (JFK/LGA/DCA/EWR). The LLM plans and explains; all
+  numbers come from code. See [`docs/DESIGN.md`](docs/DESIGN.md) §3.
+- **Chat interface** — a dark "investment intelligence" dashboard (national
+  opportunity map + live expansion rankings) with a **floating chat widget**
+  that streams the agent's replies. **Voice input** (bonus) lets you *speak* a
+  question — Gemini transcribes the mic clip into a normal agent turn. Or use
+  the terminal CLI.
+- **Hybrid public data** — cached snapshot from FAA + BTS + OurAirports, plus
+  live OpenSky (real-time traffic) and BTS T-100 REST-API tools.
+- **Honest about itself** — a persistent *Methodology · assumptions · scope ·
+  uncertainty* panel + a "decision-support, not investment advice" disclaimer,
+  per-airport **data-confidence** dots, and proxies (e.g. "unmet demand")
+  labelled as such — in both the UI and the agent's answers.
+- **Trustworthy numbers** — every figure is code-computed by `scoring.py` /
+  the live APIs; the system prompt forbids stating any statistic from memory, so
+  the LLM never hallucinates a figure.
 
 ## Quick start
 
-Requires Python 3.11+ and an Anthropic API key.
+Requires Python 3.11+ and **one** LLM key — Gemini *or* Anthropic. Voice input
+needs a Gemini key (Gemini does the speech-to-text).
 
 ```bash
 pip install -r requirements.txt
@@ -41,7 +51,7 @@ python data/build_dataset.py            # or --quick for a single month
 
 # 2) Add your key
 cp .env.example .env        # then edit .env
-# or: export ANTHROPIC_API_KEY=sk-ant-...
+# or: export GEMINI_API_KEY=...         # (or ANTHROPIC_API_KEY=sk-ant-...)
 
 # 3a) Chat in the browser
 streamlit run app.py
@@ -51,8 +61,10 @@ python chat_cli.py
 python chat_cli.py "Compare LAX and SNA congestion"     # one-shot
 ```
 
-No key yet? The **sidebar dashboard, scoring, and map still work** — only the
-chat needs the LLM. Get a key at <https://console.anthropic.com/>.
+No key yet? The **dashboard, scoring, map, and rankings still work** — only the
+chat + voice need the LLM. Get a Gemini key at
+<https://aistudio.google.com/apikey> or an Anthropic key at
+<https://console.anthropic.com/>.
 
 ## Tests
 
@@ -69,8 +81,10 @@ src/data_layer.py       snapshot load, airport-name resolver, region lookup
 src/live_api.py         OpenSky real-time traffic (best-effort)
 src/tools.py            agent tool schemas + deterministic dispatch
 src/agent.py            Claude tool-use loop + system prompt
+src/agent_gemini.py     Gemini function-calling loop (same tools/prompt)
 src/llm.py              provider seam (model / client)
-app.py                  Streamlit chat UI + dashboard
+src/voice.py            Gemini speech-to-text for voice input (bonus)
+app.py                  Streamlit dashboard + floating chat + voice
 chat_cli.py             terminal chat
 ```
 
@@ -84,8 +98,30 @@ long-haul threshold, region/state maps, airport aliases — and env vars:
 
 | Var | Default | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | required for chat |
+| `LLM_PROVIDER` | auto | `gemini` or `anthropic` (auto-detects from whichever key is set) |
+| `GEMINI_API_KEY` | — | Gemini chat + **voice** transcription |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model id |
+| `ANTHROPIC_API_KEY` | — | Anthropic chat (alternative to Gemini) |
 | `ANTHROPIC_MODEL` | `claude-opus-4-8` | e.g. `claude-sonnet-5` for cheaper/faster |
+
+## Deploy (free, permanent URL)
+
+The app runs as-is on **[Streamlit Community Cloud](https://share.streamlit.io)**
+(free, HTTPS — so browser voice input works):
+
+1. Push this repo to GitHub.
+2. share.streamlit.io → **New app** → pick the repo and `app.py`.
+3. In the app's **Settings → Secrets**, add your key (TOML):
+   ```toml
+   GEMINI_API_KEY = "your-key-here"
+   ```
+   `src/llm.py` reads env vars **or** `st.secrets`, so no code change is needed.
+4. Deploy → you get a permanent `https://<app>.streamlit.app` URL.
+
+Notes: the committed `data/airport_snapshot.parquet` means there's no build step;
+the dashboard/map/rankings work with **no key** (only chat + voice need one); and
+the key is shared with anyone who opens the URL, so set a spend cap for public use.
+Hugging Face Spaces (Streamlit SDK) works the same way.
 
 ## Scope & caveats (short version)
 

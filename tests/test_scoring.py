@@ -32,7 +32,8 @@ def test_snapshot_has_core_columns(df):
 
 
 def test_percentiles_bounded(df):
-    for col in ["congestion_pct", "growth_pct_rank", "scale_pct", "utilization_pct", "eos"]:
+    for col in ["congestion_pct", "choke_pct", "growth_pct_rank", "scale_pct",
+                "utilization_pct", "eos"]:
         s = df[col].dropna()
         assert s.min() >= 0 and s.max() <= 100
 
@@ -65,10 +66,33 @@ def test_new_england_region():
 
 
 # --- scoring API ------------------------------------------------------------
-def test_airport_report_breakdown_sums_to_eos():
-    rep = scoring.airport_report("SFO")
-    total = sum(p["contribution"] for p in rep["eos_breakdown"])
-    assert math.isclose(total, rep["eos"], abs_tol=0.15)
+def test_airport_report_breakdown():
+    bd = scoring.airport_report("SFO")["eos_breakdown"]
+    base = sum(p["contribution"] for p in bd["pillars"])
+    assert math.isclose(base, bd["base"], abs_tol=0.25)
+    assert math.isclose(bd["base"] * bd["choke_gate"], bd["eos"], abs_tol=0.3)
+    assert {p["pillar"] for p in bd["pillars"]} == {"choke", "demand", "scale"}
+
+
+def test_slot_controlled_flagged_and_choked(df):
+    slots = set(df[df["slot_controlled"]]["iata"])
+    assert {"JFK", "LGA", "DCA", "EWR"} <= slots
+    for code in ["LGA", "DCA", "JFK", "EWR"]:
+        assert df[df["iata"] == code].iloc[0]["choke_pct"] >= 90
+
+
+def test_choke_gate_demotes_big_but_unchoked(df):
+    m = df[(df["scale_pct"] >= 80) & (df["choke_pct"] < 35)]
+    assert not m.empty, "expected some big-but-unchoked airports"
+    r = m.sort_values("scale_pct", ascending=False).iloc[0]
+    assert r["choke_gate"] < 0.85
+    assert r["eos"] < r["eos_base"]
+
+
+def test_high_eos_requires_choke(df):
+    high = df[df["eos"] >= 70]
+    assert not high.empty
+    assert (high["choke_pct"].fillna(0) >= 50).all()
 
 
 def test_compare_returns_all_requested():

@@ -1,182 +1,173 @@
 # Design & Architecture — Airport Investment Intelligence Agent
 
 A conversational agent that helps an investment analyst find **US airports where
-terminal/runway expansion capital will be most productive** — i.e. where demand
-is large and growing but the airport is already capacity-constrained, so added
-capacity converts directly into more served flights and passengers.
+terminal/runway expansion capital will be most productive**.
+
+## 0. The investment thesis (what "profitable" means here)
+
+The fund makes money by **building physical capacity** (terminals, gates,
+runways) and earning airline fees + passenger/retail revenue on the new traffic.
+That pays off only at a **choked bottleneck** — an airport that is maxed out and
+turning flights away. So a good target needs **three conditions at once**:
+
+1. **Capacity choke** — near-100% utilization, chronic delays, or an FAA cap on
+   flights. *This is the differentiator: high demand alone isn't enough — if the
+   airport has room, it just absorbs the demand and no build is needed.*
+2. **Demand momentum** — traffic is growing.
+3. **Scale** — a base large enough to justify hundreds of millions in capex.
+
+Everything below is built to find the **intersection** of the three.
 
 ---
 
-## 1. Architecture at a glance
+## 1. Architecture
 
 ```
-                    ┌──────────────────────────────────────────────┐
-   user (chat) ───► │  Agent loop (Claude, tool-use)                │
-                    │  - plans, calls tools, narrates, follows up   │
-                    └───────────────┬──────────────────────────────┘
-                                    │ tool calls (typed args)
-                    ┌───────────────▼──────────────────────────────┐
-                    │  Tools (src/tools.py)  — deterministic         │
-                    │  resolve_airport · airport_report · rank ·     │
-                    │  compare · long_haul · unmet_demand ·          │
-                    │  live_traffic · universe_summary               │
-                    └───────┬─────────────────────────┬─────────────┘
-                            │                          │
-              ┌─────────────▼───────────┐   ┌──────────▼───────────┐
-              │ Scoring engine          │   │ Live API             │
-              │ (src/scoring.py)        │   │ (src/live_api.py)    │
-              │ EOS + percentiles,      │   │ OpenSky real-time    │
-              │ unmet demand, long-haul │   │ traffic (best-effort)│
-              └─────────────┬───────────┘   └──────────────────────┘
-                            │ reads
-              ┌─────────────▼───────────────────────────────────────┐
-              │ Cached snapshot  data/airport_snapshot.parquet       │
-              │ built offline from public data (data/build_dataset)  │
-              └──────────────────────────────────────────────────────┘
+   user (chat) ─► Agent loop (Claude / Gemini, tool-use) ─► narrates, follows up
+                        │ typed tool calls
+        ┌───────────────┼─────────────────────────────┐
+   deterministic scoring│                         live public APIs
+   (src/scoring.py)     │                         (src/live_api.py)
+   EOS + choke gate,    │                    OpenSky (real-time flights)
+   unmet demand, ranking│                    BTS T-100 (official 2024 traffic)
+        └──────┬────────┘
+        cached snapshot  data/airport_snapshot.parquet
+        (built offline from public data — data/build_dataset.py)
 ```
 
-**Hybrid data strategy.** A one-time offline build (`data/build_dataset.py`)
-pulls public government/open datasets, joins them per airport, derives the
-investment metrics, and caches one parquet the app reads instantly. A live
-OpenSky call supplies real-time traffic on demand. This gives deep, reproducible
-scoring *and* a genuine live-API integration, while keeping the demo fast and
-robust (the snapshot ships in the repo, so nothing breaks if a source is down).
+**Hybrid data strategy.** Heavy analytics read a cached snapshot built once from
+public datasets (fast, reproducible, demo-safe). Two genuine **live public REST
+APIs** are wired as tools for freshness/cross-checks. This satisfies "use public
+APIs to gather data" while keeping the agent fast and robust.
+
+**Provider-agnostic.** The LLM sits behind `src/llm.py`; `AirportAgent` (Claude)
+and `GeminiAirportAgent` share the same tools, prompt, and scoring.
 
 ---
 
-## 2. Data sources (all public, no key)
+## 2. Data sources — what we use, and the "do we need more APIs?" answer
 
-| Source | Gives us | Used for |
-|---|---|---|
-| **OurAirports** (`airports.csv`, `runways.csv`) | Airport metadata: IATA/ICAO, geo, state/region, runway count | Region filters, geo/map, runway utilization |
-| **FAA ACAIS** CY2024 enplanements xlsx | Passengers 2024 + 2023, % change, hub size | Demand **scale** & **growth** pillars |
-| **BTS On-Time Performance** (sampled months Feb/Jul/Oct 2024) | Per-flight departure delay, cancellation, route distance | **Congestion** pillar, **long-haul %**, unmet demand |
-| **OpenSky Network** (live) | Aircraft currently airborne/on-ground near an airport | Real-time activity gauge |
-
-Coverage in the shipped snapshot: **478 US commercial airports**, 332 with
-On-Time (delay/long-haul) data.
-
----
-
-## 3. Scoring methodology — the Expansion Opportunity Score (EOS)
-
-The core deterministic artifact. Each airport gets a **0–100 EOS** = weighted sum
-of four **national-percentile** pillars. Percentile-ranking (not raw values) makes
-pillars unit-free, outlier-robust, and interpretable ("92nd percentile for
-congestion nationally").
-
-| Pillar | Weight | Signal | Why it belongs in an expansion thesis |
+| Source | Type | Gives us | Role |
 |---|---|---|---|
-| **Congestion** | 35% | delay-rate (>15 min), cancellation rate, mean dep delay | Delays/cancellations are the market's signal the airport can't clear current demand. This is the strongest "expansion is needed *now*" signal → highest weight. |
-| **Growth** | 30% | YoY enplanement growth (FAA CY24 vs CY23) | Forward demand — a growing airport will outrun its footprint. |
-| **Scale** | 20% | log(annual enplanements) | Absolute payoff: 1% more capacity at a 40M-pax hub is worth far more passengers than at a regional field. Log-scaled because volume is heavy-tailed. |
-| **Utilization** | 15% | departures per (non-closed) runway | Physical capacity pressure — are the existing runways worked hard? |
+| **OurAirports** | HTTP CSV | geo, region/state, runways | metadata, map, utilization denominator |
+| **FAA ACAIS CY2024** | public file | passengers 2024/2023, hub size | **scale** + **demand** pillars |
+| **BTS On-Time** (sampled 2024) | public file | per-flight delays, cancels, route distance | **choke** signal + long-haul % |
+| **FAA capacity designations** | curated (14 CFR 93; FAA Core 30) | slot-controlled + Core-30 flags | **choke** — the authoritative bottleneck marker |
+| **OpenSky** | **live REST API** | real-time aircraft near an airport | live activity tool |
+| **BTS T-100 domestic** | **live REST API** (ArcGIS) | official 2024 passengers/departures | live authoritative cross-check |
 
-Weights live in `src/config.py:EOS_WEIGHTS` (asserted to sum to 1.0). Every score
-is fully decomposable — `airport_report` returns each pillar's percentile,
-weight, and contribution, so the agent can *explain* a ranking rather than assert
-it.
+**Sources we deliberately did *not* add (and why):**
 
-**Derived analytics** built on the same data:
-- **Congestion level** — Low/Moderate/Elevated/High/Severe band from the
-  congestion percentile (answers "compare X and Y congestion").
-- **Long-haul %** — share of departures with stage length ≥ 2000 statute miles
-  (answers "% long-haul out of Anchorage"). Definition + scope caveat returned
-  with the number.
-- **Unmet demand** — a transparent proxy (see §5), not a forecast.
+- **Load factor / seats (raw BTS T-100 segment).** The best *additional* "planes
+  are full" signal, but the seats field only exists in a bulk file whose current
+  URL we couldn't resolve in this environment (the ArcGIS mirror drops seats).
+  Documented as the first extension. We already capture choke via delays +
+  utilization + slot-control, so this is additive, not blocking.
+- **Gate / terminal counts.** The thesis is literally about gates, but there is
+  **no clean public API** for per-airport gate capacity. We proxy physical
+  capacity with runway count + slot-control. Honest limitation.
+- **FAA TAF (forward forecasts) / ASPM (hourly capacity vs demand).** Richer
+  forward-demand and true capacity ratios, but portal/form-gated, not clean
+  APIs. Noted as production extensions.
+
+**Verdict:** for the four exam questions we have everything; for the deeper
+thesis, the FAA capacity designations were the highest-value addition available,
+and we added them.
+
+---
+
+## 3. Scoring methodology — the choke-gated Expansion Opportunity Score
+
+`EOS = (Choke 0.45 + Demand 0.30 + Scale 0.25) × ChokeGate`, each pillar a
+0–100 **national percentile** (unit-free, outlier-robust, interpretable).
+
+| Pillar | Weight | Built from |
+|---|---|---|
+| **Capacity choke** | 45% | delay rate, cancellations, mean delay, departures-per-runway, **+ a bonus for FAA slot-controlled airports** |
+| **Demand** | 30% | YoY passenger growth (FAA CY24 vs CY23) |
+| **Scale** | 20%→25% | log(annual enplanements) |
+
+**The choke gate is the key design choice.**
+`gate = 0.60 + 0.40 × (choke_pct / 100)`. It multiplies the score *down* when
+choke is low, so a big, growing, but **un-choked** airport can never rank high.
+This makes the score match "profitable bottleneck" **by construction**, not by
+luck — a weighted sum alone would let scale+growth inflate an airport that
+doesn't actually need a build.
+
+**Proof it works (from the live data):**
+- Top candidates — CLT, DFW, PHX, SAN, DEN, PHL, **LGA**, MIA, **DCA**, ORD — are
+  all high-choke big hubs (choke 89th–100th percentile).
+- The FAA **slot-controlled** airports (LGA, DCA, JFK, EWR) rise into the top on
+  the slot bonus — exactly the "flights are capped, no room" bottlenecks.
+- The gate **demotes** big-but-unchoked airports: OGG/Maui (scale 89th, choke
+  28th) falls from base 37 → EOS 27 via a 0.71 gate.
+
+Every score is fully decomposable — `airport_report` returns each pillar's
+percentile, weight, contribution, the base, and the gate, so the agent can
+*explain* a ranking, not assert it.
+
+**Derived analytics** on the same data: `congestion_level` (delay-based band, for
+"compare X vs Y congestion"), `long_haul_pct` (≥2000 mi share), and a transparent
+`unmet_demand` proxy (latent demand vs on-time-served capacity — directional, not
+a forecast).
 
 ---
 
 ## 4. Where and how AI is used
 
-**The LLM plans and narrates; the code decides.** A strict split:
+**AI plans and narrates; code decides every number.** Claude/Gemini interprets
+the question, resolves ambiguous names (`resolve_airport`), picks tools + args,
+sequences multi-step work, and explains reasoning + methodology. The system
+prompt forbids stating any figure from memory — if a tool lacks it, the agent
+says so. All airport facts come from `scoring.py` / the live APIs. This satisfies
+"deterministic scoring, not only LLM output" and prevents hallucinated
+statistics — the failure mode that would make an investment tool untrustworthy.
 
-- **AI (Claude, native tool-use loop in `src/agent.py`):** interprets the
-  question, resolves ambiguous references (calls `resolve_airport`), picks the
-  right tool(s) and arguments, sequences multi-step work, explains the reasoning
-  and methodology in plain language, and handles conversational follow-ups
-  (message history persists on the agent instance).
-- **Deterministic code (`scoring.py`):** every airport number — passenger counts,
-  delay rates, growth, long-haul %, scores, rankings. The system prompt forbids
-  the model from stating any figure from memory; if a tool lacks it, the agent
-  says so.
-
-This satisfies the "deterministic scoring, not only LLM output" requirement and
-prevents hallucinated statistics — the failure mode that would make an
-investment tool untrustworthy. The tool trace is surfaced in the UI ("How I got
-this") so every answer is auditable back to a code-computed result.
-
-Model default `claude-opus-4-8` (strongest reasoning; override via
-`ANTHROPIC_MODEL`, e.g. `claude-sonnet-5` for a cheaper/faster demo). The
-provider is isolated in `src/llm.py` for swappability.
+**Voice (bonus).** A recorded microphone clip is transcribed by Gemini
+(`src/voice.py`) and fed through the *identical* agent path as typed text — no
+separate voice branch, so it inherits the same grounding and honesty guarantees.
+Speech-to-text always uses Gemini (Claude can't ingest audio); the mic only
+appears when a Gemini backend is configured, so the UI never advertises a
+capability it can't deliver.
 
 ---
 
-## 5. Key tradeoffs & assumptions (explicitly communicated)
+## 5. Key tradeoffs, assumptions & uncertainty (surfaced, not hidden)
 
-The agent is built to **surface** these, not hide them.
-
-1. **Unmet demand is a proxy, not a forecast.** Model (monthly):
-   `served_ontime = departures × (1 − delayed% − cancelled%)`,
-   `latent_demand = departures × (1 + max(growth,0))`,
-   `unmet = max(0, latent − served)`. Rationale: delays/cancellations reveal
-   demand the airport can't clear on schedule; growth adds forward pressure. It
-   is directional — some delay is weather/ATC, not capacity — and the caveats
-   ride along with every result.
-
-2. **Long-haul % is domestic-only.** BTS On-Time covers US carriers with ≥0.5%
-   of domestic scheduled revenue; international segments aren't included, so
-   long-haul % **understates** intercontinental activity at gateways (SFO, JFK).
-   Flagged whenever long-haul is discussed.
-
-3. **Small-airport growth is volatile.** A regional field going 25k→45k
-   passengers posts +80% growth and can top an unfiltered ranking. The engine
-   assigns it **Low** `data_confidence`, and the agent applies a ~500k-passenger
-   floor by default for "expansion candidate" rankings (and says so). This keeps
-   recommendations credible while remaining transparent and overridable.
-
-4. **Seasonality sampling.** Congestion uses 3 months (Feb/Jul/Oct 2024) to
-   balance seasonal spread against build time — not the full year. Configurable
-   in `build_dataset.py`.
-
-5. **Weights are a defensible prior, not ground truth.** They encode the thesis
-   "constrained-but-growing demand". All in one config block for easy
-   sensitivity analysis. A firm with a different thesis (e.g. pure growth plays)
-   would retune them.
-
-6. **Scope is US commercial airports.** Non-US, cargo-only, and GA fields are out
-   of scope. FAA↔IATA code join assumes they match (true for major commercial
-   airports).
-
-7. **Data confidence is first-class.** Each airport carries High/Medium/Low
-   confidence from data completeness + departure sample size; imputed pillars
-   (median fill) are tracked and flagged.
+1. **Choke gate weighting** encodes the thesis (choke is necessary). Floor 0.60
+   is a judgment call — all weights/floor live in `src/config.py` for sensitivity
+   analysis.
+2. **Slot-control list is curated** (JFK, LGA, DCA, EWR — FAA Level 3 as of 2024)
+   and changes rarely; cited in `src/faa_designations.py`.
+3. **Delays mix weather/ATC with physical choke.** Mitigated by combining them
+   with utilization + slot-control rather than relying on delays alone.
+4. **Long-haul % is domestic-only** (BTS On-Time scope) — understates
+   intercontinental activity at gateways (SFO, JFK). Flagged in-answer.
+5. **Unmet demand is a proxy, not a forecast.** Caveats returned with every result.
+6. **Small airports** post volatile growth % on a small base → **Low** confidence,
+   and expansion rankings apply a ~500k-passenger floor by default.
+7. **Seasonality:** choke uses 3 sampled months (Feb/Jul/Oct 2024).
+8. **Scope:** US commercial airports; FAA↔IATA codes assumed to match (true for
+   major commercial airports).
+9. **Known gaps** (§2): load factor and gate/terminal capacity — documented, not
+   faked.
 
 ---
 
-## 6. What I'd add with more time
-
-- International segments (BTS T-100) for true intercontinental long-haul.
-- Runway/gate capacity from FAA facility data for a real capacity-utilization
-  denominator (current utilization uses runway *count* as a proxy).
-- Weather-adjusted delays to sharpen the unmet-demand signal.
-- A sensitivity view: how rankings shift as EOS weights change.
-- Voice I/O (browser Web Speech / `st.audio_input` + transcription) — the bonus.
-
----
-
-## 7. File map
+## 6. File map
 
 ```
-data/build_dataset.py   offline build: download → join → derive → parquet
-src/config.py           weights, thresholds, regions, aliases (all tunables)
-src/data_layer.py       snapshot load, airport-name resolver, region lookup
-src/scoring.py          EOS, percentiles, unmet demand, long-haul, ranking
-src/live_api.py         OpenSky real-time traffic (best-effort)
-src/tools.py            tool schemas + deterministic dispatch
-src/agent.py            Claude tool-use loop + system prompt
-src/llm.py              provider seam (model id / client)
-app.py                  Streamlit chat UI + dashboard + map
-chat_cli.py             terminal chat (no UI needed)
-tests/test_scoring.py   deterministic-engine unit tests
+data/build_dataset.py     offline build: download → join → derive → parquet
+src/faa_designations.py   FAA slot-control + Core-30 lists (curated, cited)
+src/scoring.py            choke-gated EOS, pillars, unmet demand, ranking   ← core IP
+src/data_layer.py         snapshot load, airport-name resolver, region lookup
+src/live_api.py           OpenSky + BTS T-100 live REST APIs
+src/tools.py              tool schemas + deterministic dispatch
+src/agent.py              Claude tool-use loop + thesis system prompt
+src/agent_gemini.py       Gemini function-calling loop (same tools/prompt)
+src/llm.py                provider seam (Claude / Gemini)
+src/voice.py              Gemini speech-to-text — voice input (bonus)
+app.py                    dark dashboard (map + rankings) + floating chat + voice
+chat_cli.py               terminal chat
+tests/test_scoring.py     deterministic-engine tests (incl. gate behavior)
 ```

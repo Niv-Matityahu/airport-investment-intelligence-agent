@@ -16,9 +16,20 @@ import json
 import anthropic
 
 from . import llm
-from .tools import TOOL_SPECS, dispatch
+from .tools import METRIC_TOOLS, TOOL_SPECS, dispatch, needs_grounding
 
 MAX_ROUNDS = 8  # hard cap on tool rounds per user turn
+
+# Shared by both agents: shown when a reply states airport figures but no metric
+# tool was called that turn (i.e. the numbers were fabricated from memory).
+GROUNDING_NUDGE = (
+    "GROUNDING CHECK: your reply states airport figures (a score, percentile, "
+    "passenger count, or growth number) but you did not call any data tool this "
+    "turn. Never state such figures from memory — they must come from a tool. "
+    "Call the right tool now (airport_report for one airport; rank_airports, "
+    "compare_airports, unmet_demand, or long_haul_profile as appropriate) and "
+    "answer ONLY from its result."
+)
 
 SYSTEM_PROMPT = """\
 You are the Airport Investment Intelligence Agent for a firm that invests in \
@@ -42,14 +53,23 @@ a small base and rank misleadingly high. Mention you applied a size floor, and \
 offer to include smaller ones. Always call out any Low/Medium data_confidence \
 entries.
 
+## The investment thesis (use this to reason)
+The fund profits by BUILDING capacity where it is choked. A good target needs \
+THREE things at once: (1) capacity CHOKE — the airport is maxed out and spills \
+flights it can't serve; (2) DEMAND — traffic is growing; (3) SCALE — big enough \
+to justify major capex. High demand ALONE is not enough: if an airport has room, \
+it just absorbs the demand and no build is needed. Choke is the differentiator.
+
 ## The Expansion Opportunity Score (EOS)
-A 0-100 score = weighted blend of four national-percentile pillars: \
-Congestion 35% (delays + cancellations — is it constrained now?), \
-Growth 30% (YoY passenger growth — is demand rising?), \
-Scale 20% (passenger volume, log — how big is the payoff?), \
-Utilization 15% (departures per runway — are the runways worked hard?). \
-Higher = stronger expansion candidate. When you rank or recommend, briefly \
-explain WHICH pillars drove the result, using the tool's breakdown.
+A 0-100 score = (Choke 45% + Demand 30% + Scale 25%, as national percentiles) \
+× a CHOKE GATE. The gate multiplies the score down when choke is low, so a big, \
+growing, but un-choked airport can NOT rank high — the score requires a \
+bottleneck by construction. Choke combines delays, cancellations, runway \
+utilization, and FAA slot-control. Two authoritative capacity flags matter: \
+`slot_controlled` (FAA legally caps flights — JFK/LGA/DCA/EWR — the strongest \
+choke signal) and `faa_core30` (FAA congestion-tracked hub). When you rank or \
+recommend, explain WHICH pillars drove it using the tool's `eos_breakdown` \
+(pillars + base + choke_gate), and call out slot-control when present.
 
 ## Communicating honestly (required)
 - State assumptions and scope: the data is US commercial airports only; \
@@ -77,8 +97,8 @@ def _preview(obj, limit: int = 600) -> str:
 
 class AirportAgent:
     def __init__(self):
-        self.client = llm.get_client()
-        self.model = llm.MODEL
+        self.client = llm.get_anthropic_client()
+        self.model = llm.ANTHROPIC_MODEL
         self.messages: list[dict] = []
 
     def reset(self):
@@ -88,6 +108,7 @@ class AirportAgent:
         """Run one user turn to completion. Returns {reply, trace, error?}."""
         self.messages.append({"role": "user", "content": user_text})
         trace: list[dict] = []
+        nudged = False
 
         try:
             for _ in range(MAX_ROUNDS):
@@ -102,7 +123,13 @@ class AirportAgent:
                 self.messages.append({"role": "assistant", "content": resp.content})
 
                 if resp.stop_reason != "tool_use":
-                    return {"reply": _final_text(resp), "trace": trace}
+                    text = _final_text(resp)
+                    called_metric = any(e.get("tool") in METRIC_TOOLS for e in trace)
+                    if not called_metric and not nudged and needs_grounding(text):
+                        nudged = True
+                        self.messages.append({"role": "user", "content": GROUNDING_NUDGE})
+                        continue
+                    return {"reply": text, "trace": trace}
 
                 # execute every tool_use block, return all results in one user turn
                 tool_results = []
@@ -136,3 +163,11 @@ class AirportAgent:
 
 def _final_text(resp) -> str:
     return "\n".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+
+
+def make_agent():
+    """Return the agent for the active provider (llm.provider())."""
+    if llm.provider() == "gemini":
+        from .agent_gemini import GeminiAirportAgent
+        return GeminiAirportAgent()
+    return AirportAgent()

@@ -8,7 +8,62 @@ the "deterministic scoring, LLM describes" split the exam asks for.
 """
 from __future__ import annotations
 
+import math
+import re
+
+import numpy as np
+
 from . import data_layer, live_api, scoring
+
+# Tools that return code-computed airport metrics. If a turn states airport
+# figures without calling one of these, the answer is ungrounded (fabricated).
+METRIC_TOOLS = {
+    "airport_report", "rank_airports", "compare_airports", "unmet_demand",
+    "long_haul_profile", "bts_traffic", "live_traffic", "universe_summary",
+}
+
+# Matches airport-specific QUANTITATIVE claims that MUST come from a tool:
+# an EOS/score number, an Nth-percentile, a choke-gate value, a comma-grouped
+# count (e.g. 21,090,721), enplanements with a number, or a growth %.
+_METRIC_CLAIM = re.compile(
+    r"(?:EOS|expansion opportunity score|\bscore)\b[^.\d\n]{0,15}\d"
+    r"|\d[\d.]*\s*(?:th|st|nd|rd)?\s*percentile"
+    r"|percentile\s*(?:of|:)?\s*\d"
+    r"|choke\s*gate\b[^.\d\n]{0,10}\d"
+    r"|\d{1,3}(?:,\d{3}){1,}"
+    r"|\benplanements?\b[^.]*?\d"
+    r"|(?:growth|yoy|year-over-year)[^.]*?[-+]?\d+(?:\.\d+)?\s*%"
+    r"|[-+]?\d+(?:\.\d+)?\s*%[^.]*?(?:growth|yoy)",
+    re.IGNORECASE,
+)
+
+
+def needs_grounding(text: str) -> bool:
+    """True if `text` makes a quantitative airport claim that requires a tool."""
+    return bool(_METRIC_CLAIM.search(text or ""))
+
+
+def _sanitize(o):
+    """Coerce numpy / pandas scalars to native JSON-serialisable Python.
+
+    Tool results come from pandas, so they carry numpy types (np.bool_,
+    np.int64, np.float64, NaN). The LLM SDKs JSON-serialise tool results, and
+    numpy scalars are NOT JSON-serialisable — an un-coerced np.bool_ crashed the
+    entire agent turn ("Object of type bool_ is not JSON serializable"). This is
+    the single choke point every tool result flows through, so it is fixed here
+    once for both the Gemini and Anthropic agents.
+    """
+    if isinstance(o, dict):
+        return {k: _sanitize(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_sanitize(v) for v in o]
+    if isinstance(o, np.ndarray):
+        return [_sanitize(v) for v in o.tolist()]
+    if isinstance(o, np.generic):
+        o = o.item()
+    if isinstance(o, float) and math.isnan(o):
+        return None
+    return o
 
 # ---------------------------------------------------------------------------
 # Tool declarations (Anthropic tool-use schema)
@@ -125,6 +180,22 @@ TOOL_SPECS = [
         },
     },
     {
+        "name": "bts_traffic",
+        "description": (
+            "Official BTS T-100 DOMESTIC passengers + departures for ONE airport "
+            "(calendar 2024), fetched LIVE from the BTS ArcGIS REST API. An "
+            "independent, authoritative cross-check on the cached figures. Note: "
+            "domestic only, so it runs lower than total enplanements at "
+            "international gateways (SFO, JFK). Use when the user wants official/"
+            "live traffic numbers or to double-check a figure."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"iata": {"type": "string"}},
+            "required": ["iata"],
+        },
+    },
+    {
         "name": "universe_summary",
         "description": (
             "What the agent can see: airport count, data coverage, the sampled "
@@ -142,7 +213,7 @@ TOOL_SPECS = [
 def dispatch(name: str, tool_input: dict) -> dict:
     """Run one tool call. Returns a JSON-serialisable dict (never raises to caller)."""
     try:
-        return _dispatch(name, tool_input or {})
+        return _sanitize(_dispatch(name, tool_input or {}))
     except Exception as e:  # noqa: BLE001 - surface as tool error, keep loop alive
         return {"error": f"{type(e).__name__}: {e}"}
 
@@ -191,6 +262,9 @@ def _dispatch(name: str, i: dict) -> dict:
 
     if name == "live_traffic":
         return live_api.nearby_traffic(i["iata"])
+
+    if name == "bts_traffic":
+        return live_api.bts_t100_traffic(i["iata"])
 
     if name == "universe_summary":
         return scoring.universe_summary()

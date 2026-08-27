@@ -7,10 +7,26 @@ Terminal chat with the Airport Investment Intelligence Agent — no UI needed.
 
 Type 'reset' to clear history, 'exit'/Ctrl-D to quit.
 """
+import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+
+
+def _load_env():
+    env = ROOT / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
+
+
+_load_env()
 
 from src import llm  # noqa: E402
 
@@ -27,12 +43,14 @@ def _print_result(res: dict):
 
 def main():
     if not llm.have_credentials():
-        print("No ANTHROPIC_API_KEY found. Set it (see .env.example) and retry.")
+        key = "GEMINI_API_KEY" if llm.provider() == "gemini" else "ANTHROPIC_API_KEY"
+        print(f"No {key} found. Set it (see .env.example) and retry.")
         sys.exit(1)
 
-    from src.agent import AirportAgent
-    agent = AirportAgent()
-    print(f"Airport Investment Intelligence Agent (model: {llm.MODEL})")
+    from src.agent import make_agent
+    agent = make_agent()
+    print(f"Airport Investment Intelligence Agent "
+          f"(provider: {llm.provider()}, model: {llm.active_model()})")
 
     if len(sys.argv) > 1:  # one-shot mode
         _print_result(agent.chat(" ".join(sys.argv[1:])))

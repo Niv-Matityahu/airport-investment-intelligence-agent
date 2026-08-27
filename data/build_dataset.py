@@ -42,6 +42,9 @@ DATA_DIR = Path(__file__).resolve().parent
 RAW_DIR = DATA_DIR / "raw"
 RAW_DIR.mkdir(exist_ok=True)
 
+sys.path.insert(0, str(DATA_DIR.parent))
+from src.faa_designations import FAA_CORE_30, SLOT_CONTROLLED  # noqa: E402
+
 OUT_PARQUET = DATA_DIR / "airport_snapshot.parquet"
 OUT_META = DATA_DIR / "snapshot_meta.json"
 
@@ -280,6 +283,10 @@ def main() -> None:
 
     df = meta.merge(faa, on="iata", how="left").merge(ontime, on="iata", how="left")
 
+    # FAA capacity designations (authoritative choke markers)
+    df["slot_controlled"] = df["iata"].isin(SLOT_CONTROLLED)
+    df["faa_core30"] = df["iata"].isin(FAA_CORE_30)
+
     # derived capacity/utilisation proxy: departures relative to runway count
     df["dep_per_runway_month"] = (
         df["departures_per_month"] / df["num_runways"].clip(lower=1)
@@ -320,6 +327,11 @@ def main() -> None:
             "congestion_basis": (
                 f"share of departures delayed >{DELAY_THRESHOLD_MIN} min + "
                 "cancellation rate + mean departure delay, from sampled months"
+            ),
+            "capacity_designations": (
+                "slot_controlled = FAA Level 3 / schedule-coordinated (JFK, LGA, "
+                "DCA, EWR); faa_core30 = FAA Core 30 congestion-tracked hub. Used "
+                "to boost the capacity-choke pillar."
             ),
         },
         "columns": list(df.columns),

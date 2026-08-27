@@ -37,8 +37,20 @@ def _minmax(s: pd.Series) -> pd.Series:
     return (s - lo) / (hi - lo)
 
 
+def _weighted_norm(df: pd.DataFrame, weights: dict) -> pd.Series:
+    """Weighted blend of min-max-normalised columns; NaN where no inputs present."""
+    comp = pd.Series(0.0, index=df.index)
+    wsum = pd.Series(0.0, index=df.index)
+    for col, w in weights.items():
+        if col in df:
+            norm = _minmax(df[col])
+            comp = comp.add(norm * w, fill_value=0)
+            wsum = wsum.add(norm.notna() * w, fill_value=0)
+    return comp / wsum.replace(0, np.nan)
+
+
 def build_scored() -> pd.DataFrame:
-    """Compute pillar percentiles + EOS for every airport. Cached."""
+    """Compute pillar percentiles + choke-gated EOS for every airport. Cached."""
     global _SCORED
     if _SCORED is not None:
         return _SCORED
@@ -46,51 +58,47 @@ def build_scored() -> pd.DataFrame:
     assert abs(sum(config.EOS_WEIGHTS.values()) - 1.0) < 1e-9, "EOS weights must sum to 1"
     df = load_snapshot().copy()
 
-    # --- congestion composite -> percentile ---------------------------------
-    cw = config.CONGESTION_WEIGHTS
-    comp = pd.Series(0.0, index=df.index)
-    wsum = pd.Series(0.0, index=df.index)
-    for col, w in cw.items():
-        if col in df:
-            norm = _minmax(df[col])
-            comp = comp.add(norm * w, fill_value=0)
-            wsum = wsum.add(norm.notna() * w, fill_value=0)
-    df["congestion_raw"] = np.where(wsum > 0, comp / wsum.replace(0, np.nan), np.nan)
+    # --- pure delay-based congestion (for "compare X vs Y congestion") ------
+    df["congestion_raw"] = _weighted_norm(df, config.CONGESTION_WEIGHTS)
     df["congestion_pct"] = _pct_rank(df["congestion_raw"])
-
-    # --- growth --------------------------------------------------------------
-    df["growth_pct_rank"] = _pct_rank(df.get("pax_growth_pct"))
-
-    # --- scale (log enplanements) -------------------------------------------
-    df["scale_raw"] = np.log10(df["enplanements_2024"].clip(lower=1))
-    df["scale_pct"] = _pct_rank(df["scale_raw"])
+    df["congestion_level"] = df["congestion_pct"].map(_congestion_band)
 
     # --- utilisation (departures per runway) --------------------------------
     df["utilization_pct"] = _pct_rank(df.get("dep_per_runway_month"))
 
-    # --- Expansion Opportunity Score ----------------------------------------
+    # --- CAPACITY CHOKE pillar: delays + cancellations + runway utilisation,
+    #     plus a hard bonus for FAA slot-controlled airports ------------------
+    choke_raw = _weighted_norm(df, config.CHOKE_WEIGHTS)
+    if "slot_controlled" in df:
+        choke_raw = (choke_raw + df["slot_controlled"].astype(float)
+                     * config.SLOT_CHOKE_BONUS).clip(upper=1.0)
+    df["choke_raw"] = choke_raw
+    df["choke_pct"] = _pct_rank(df["choke_raw"])
+
+    # --- demand (growth) + scale (log enplanements) -------------------------
+    df["growth_pct_rank"] = _pct_rank(df.get("pax_growth_pct"))
+    df["scale_raw"] = np.log10(df["enplanements_2024"].clip(lower=1))
+    df["scale_pct"] = _pct_rank(df["scale_raw"])
+
+    # --- EOS = weighted base * CHOKE GATE -----------------------------------
+    # Base is the weighted pillar blend (median-imputing missing pillars). The
+    # gate multiplies it down when choke is low, so an un-choked airport can
+    # never rank high on scale+growth alone — the thesis by construction.
     w = config.EOS_WEIGHTS
-    pillars = {
-        "congestion": "congestion_pct",
-        "growth": "growth_pct_rank",
-        "scale": "scale_pct",
-        "utilization": "utilization_pct",
-    }
-    # median-impute missing pillars so partial-data airports still rank, but
-    # track how much was imputed to express confidence.
-    eos = pd.Series(0.0, index=df.index)
+    pillars = {"choke": "choke_pct", "demand": "growth_pct_rank", "scale": "scale_pct"}
+    base = pd.Series(0.0, index=df.index)
     imputed = pd.Series(0, index=df.index)
     for name, col in pillars.items():
         vals = df[col]
-        filled = vals.fillna(vals.median())
         imputed += vals.isna().astype(int)
-        eos += filled * w[name]
-    df["eos"] = eos.round(1)
+        base += vals.fillna(vals.median()) * w[name]
+    choke_filled = df["choke_pct"].fillna(df["choke_pct"].median())
+    gate = config.CHOKE_GATE_FLOOR + (1 - config.CHOKE_GATE_FLOOR) * (choke_filled / 100.0)
+    df["eos_base"] = base.round(1)
+    df["choke_gate"] = gate.round(3)
+    df["eos"] = (base * gate).round(1)
     df["pillars_imputed"] = imputed
     df["data_confidence"] = _confidence(df)
-
-    # descriptive labels
-    df["congestion_level"] = df["congestion_pct"].map(_congestion_band)
 
     _SCORED = df
     return df
@@ -127,13 +135,14 @@ def _congestion_band(pct: float) -> str:
 # ---------------------------------------------------------------------------
 _REPORT_FIELDS = [
     "iata", "name", "city", "state", "hub_size",
+    "slot_controlled", "faa_core30",
     "enplanements_2024", "pax_growth_pct",
     "pct_delayed_15", "mean_dep_delay_min", "pct_cancelled",
     "long_haul_pct", "mean_stage_length_mi", "n_destinations",
     "departures_per_month", "num_runways", "dep_per_runway_month",
-    "congestion_pct", "congestion_level", "growth_pct_rank",
-    "scale_pct", "utilization_pct", "eos", "data_confidence",
-    "pillars_imputed",
+    "congestion_pct", "congestion_level", "choke_pct",
+    "growth_pct_rank", "scale_pct", "utilization_pct",
+    "eos_base", "choke_gate", "eos", "data_confidence", "pillars_imputed",
 ]
 
 
@@ -163,29 +172,35 @@ def airport_report(iata: str) -> dict | None:
     return rec
 
 
-def _eos_breakdown(row: pd.Series) -> list[dict]:
-    """Per-pillar contribution to the EOS, for transparent explanations."""
+def _eos_breakdown(row: pd.Series) -> dict:
+    """Transparent EOS decomposition: 3 pillars -> base, then the choke gate.
+
+    final EOS = (sum of pillar contributions) * choke_gate.
+    """
     w = config.EOS_WEIGHTS
-    pillars = {
-        "congestion": "congestion_pct",
-        "growth": "growth_pct_rank",
-        "scale": "scale_pct",
-        "utilization": "utilization_pct",
-    }
-    out = []
+    pillars = {"choke": "choke_pct", "demand": "growth_pct_rank", "scale": "scale_pct"}
+    parts = []
     for name, col in pillars.items():
         pctl = row.get(col)
         imputed = pd.isna(pctl)
-        val = float(pctl) if not imputed else None
+        val = None if imputed else float(pctl)
         used = val if val is not None else 50.0  # median impute
-        out.append({
+        parts.append({
             "pillar": name,
             "weight": w[name],
             "percentile": None if val is None else round(val, 1),
             "imputed": bool(imputed),
             "contribution": round(used * w[name], 1),
         })
-    return out
+    return {
+        "pillars": parts,
+        "base": round(float(row.get("eos_base", 0.0)), 1),
+        "choke_gate": round(float(row.get("choke_gate", 1.0)), 3),
+        "slot_controlled": bool(row.get("slot_controlled", False)),
+        "faa_core30": bool(row.get("faa_core30", False)),
+        "eos": round(float(row.get("eos", 0.0)), 1),
+        "note": "EOS = base x choke_gate; the gate dampens un-choked airports.",
+    }
 
 
 def rank_airports(
@@ -219,8 +234,8 @@ def compare_airports(iatas: list[str], metrics: list[str] | None = None) -> dict
     codes = [i.upper() for i in iatas]
     sub = df[df["iata"].isin(codes)]
     default_metrics = [
-        "eos", "congestion_pct", "congestion_level", "pct_delayed_15",
-        "mean_dep_delay_min", "pct_cancelled", "pax_growth_pct",
+        "eos", "choke_pct", "slot_controlled", "congestion_pct", "congestion_level",
+        "pct_delayed_15", "mean_dep_delay_min", "pct_cancelled", "pax_growth_pct",
         "enplanements_2024", "long_haul_pct", "departures_per_month",
         "num_runways", "dep_per_runway_month", "data_confidence",
     ]

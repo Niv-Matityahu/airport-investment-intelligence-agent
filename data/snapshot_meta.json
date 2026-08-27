@@ -1,5 +1,5 @@
 {
-  "built_at_utc": "2026-08-26T12:26:47.173854+00:00",
+  "built_at_utc": "2026-08-26T16:40:43.256663+00:00",
   "n_airports": 478,
   "n_with_enplanements": 471,
   "n_with_ontime": 332,
@@ -20,7 +20,8 @@
     "delay_threshold_min": 15,
     "long_haul_scope": "Domestic mainline flights only. The BTS On-Time dataset covers US carriers with >=0.5% of domestic scheduled passenger revenue; international segments are NOT included, so long-haul % understates intercontinental activity at gateway airports.",
     "enplanements_year": "FAA ACAIS CY2024 vs CY2023",
-    "congestion_basis": "share of departures delayed >15 min + cancellation rate + mean departure delay, from sampled months"
+    "congestion_basis": "share of departures delayed >15 min + cancellation rate + mean departure delay, from sampled months",
+    "capacity_designations": "slot_controlled = FAA Level 3 / schedule-coordinated (JFK, LGA, DCA, EWR); faa_core30 = FAA Core 30 congestion-tracked hub. Used to boost the capacity-choke pillar."
   },
   "columns": [
     "iata",
@@ -45,6 +46,8 @@
     "mean_stage_length_mi",
     "n_destinations",
     "departures_per_month",
+    "slot_controlled",
+    "faa_core30",
     "dep_per_runway_month"
   ]
 }

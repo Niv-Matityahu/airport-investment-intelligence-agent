@@ -16,8 +16,53 @@ import requests
 from .data_layer import get_airport
 
 OPENSKY_STATES = "https://opensky-network.org/api/states/all"
+# BTS T-100 Domestic Segment (2024) — a live ArcGIS REST API (USDOT/BTS NTAD).
+BTS_T100 = ("https://services.arcgis.com/xOi1kZaI0eWDREZv/ArcGIS/rest/services/"
+            "T100_Domestic_Market_and_Segment_Data/FeatureServer/1/query")
 _CACHE: dict[str, tuple[float, dict]] = {}
 _TTL_SECONDS = 120  # OpenSky updates slowly; don't hammer it
+_T100_CACHE: dict[str, dict] = {}
+
+
+def bts_t100_traffic(iata: str) -> dict:
+    """
+    Official BTS T-100 domestic traffic for one airport (calendar 2024), fetched
+    live from the BTS ArcGIS REST API. Independent, authoritative cross-check on
+    passengers and departures. Best-effort; fails soft.
+    """
+    code = (iata or "").upper()
+    if code in _T100_CACHE:
+        return _T100_CACHE[code]
+    params = {
+        "where": f"origin='{code}'",
+        "outFields": "origin,year,passengers,departures,enplanements,arrivals",
+        "returnGeometry": "false", "f": "json",
+    }
+    try:
+        r = requests.get(BTS_T100, params=params, timeout=15)
+        r.raise_for_status()
+        feats = r.json().get("features", [])
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "airport": code, "reason": f"BTS API unavailable: {e}"}
+    if not feats:
+        out = {"available": False, "airport": code,
+               "reason": "no T-100 domestic record for this airport"}
+        _T100_CACHE[code] = out
+        return out
+    # aggregate (usually one row per origin for 2024)
+    agg = {"passengers": 0, "departures": 0, "enplanements": 0, "arrivals": 0}
+    for f in feats:
+        a = f.get("attributes", {})
+        for k in agg:
+            agg[k] += int(a.get(k) or 0)
+    out = {
+        "available": True, "airport": code, "source": "BTS T-100 domestic (CY2024, live API)",
+        **agg,
+        "note": "Domestic segments only; official BTS counts, independent of the "
+                "cached FAA/On-Time snapshot.",
+    }
+    _T100_CACHE[code] = out
+    return out
 
 
 def nearby_traffic(iata: str, radius_deg: float = 0.6) -> dict:
