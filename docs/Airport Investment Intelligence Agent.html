@@ -119,6 +119,14 @@
   .prompthdr b{color:#a5e6f3}
   .rules li{font-size:1rem; padding:6px 0 6px 28px}
   .rules li b{color:var(--cyan)}
+  /* compact worked-example grid */
+  .calc{display:grid; grid-template-columns:auto 1fr 1fr; gap:7px 26px; align-items:baseline; max-width:560px}
+  .calc .h{font-weight:800; font-size:.95rem}
+  .calc .lab{color:var(--muted); font-size:.9rem; white-space:nowrap}
+  .calc .v{font-weight:700; font-variant-numeric:tabular-nums; font-size:1.02rem; text-align:center}
+  .calc .v.dim{color:var(--muted); font-weight:600}
+  .calc .rule{grid-column:1/-1; height:1px; background:var(--border2); margin:2px 0}
+  .calc .eos{font-size:1.45rem; font-weight:800}
 
   .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border);
     border-radius:14px; overflow:hidden; max-width:900px; margin-top:16px}
@@ -193,8 +201,8 @@
     <h2>Big &amp; growing isn't enough — it must be <span class="g">choked</span></h2>
     <div class="cards">
       <div class="c hl"><span class="tagline">the differentiator</span>
-        <h3>🚦 Choke</h3><p class="muted">Jammed: delays, ~100% runway use, or FAA flight caps.
-        <strong>If it has room, no build is needed.</strong></p></div>
+        <h3>🚦 Choke</h3><p class="muted">The airport is <strong>full</strong> — long delays or capped
+        flights. If it still has room, there's nothing to fix.</p></div>
       <div class="c"><h3>📈 Demand</h3><p class="muted">Traffic is growing, so new capacity gets used.</p></div>
       <div class="c"><h3>🏗️ Scale</h3><p class="muted">Big enough to justify a major build.</p></div>
     </div>
@@ -206,30 +214,29 @@
   <section class="slide">
     <div class="kick">The scoring logic (deterministic, not the LLM)</div>
     <h2>One number: the Expansion Opportunity Score</h2>
-    <span class="pill">EOS = ( Choke 45% + Demand 30% + Scale 25% ) × Choke-gate</span>
-    <p class="muted" style="margin:.3em 0 12px"><strong>Demand &amp; Scale come straight from the data</strong>
-    (passenger growth · airport size). <strong>Choke</strong> is how jammed it is — and it's used twice.</p>
-    <div class="cards two" style="margin-top:2px">
-      <div class="c"><h4 style="margin:0 0 6px">① How we measure choke <span class="muted" style="font-weight:400">(0–100)</span></h4>
-        <p class="muted" style="font-size:.9rem;margin:0">Blend of: flights <strong>delayed</strong> ·
-        <strong>cancellations</strong> · how full the <strong>runways</strong> run · <strong>+ a bonus if
-        the FAA legally caps flights</strong>. Higher = more jammed.</p></div>
-      <div class="c"><h4 style="margin:0 0 6px">② The gate <span class="muted" style="font-weight:400">= choke, as a multiplier</span></h4>
-        <p style="font-size:.9rem;margin:0 0 4px"><code>gate = 0.60 + 0.40 × choke</code></p>
-        <p class="muted" style="font-size:.9rem;margin:0">empty airport → <strong>×0.60</strong> (cut 40%) ·
-        packed → <strong>×1.00</strong> (keep it all).</p></div>
-    </div>
-    <div class="c" style="margin-top:12px">
-      <p class="muted" style="margin:0 0 8px;font-size:.9rem">Simple example — <strong>same demand (60) &amp;
-      scale (80)</strong>, only choke differs:</p>
-      <div style="display:flex;gap:34px;flex-wrap:wrap">
-        <div><span style="color:#4ade80;font-weight:800">🟢 Packed · choke 90</span><br>
-          <span class="muted">base 78 × gate 0.96 =</span> <strong style="font-size:1.25rem;color:var(--cyan)">EOS 75</strong></div>
-        <div><span style="color:var(--orange);font-weight:800">🔴 Empty · choke 20</span><br>
-          <span class="muted">base 47 × gate 0.68 =</span> <strong style="font-size:1.25rem;color:var(--orange)">EOS 32</strong></div>
+    <span class="pill">EOS = ( Choke 45% + Demand 30% + Scale 25% ) × ( 0.60 + 0.40 × Choke )</span>
+    <p class="muted" style="margin:.5em 0 3px;font-size:.95rem"><strong>Demand &amp; Scale</strong> come
+    straight from the data (growth · size). <strong>Choke</strong> = how jammed it is — delays +
+    cancellations + runway use + an FAA-cap bonus, as a 0–100 score.</p>
+    <p class="muted" style="margin:0 0 14px;font-size:.95rem">Choke is used <strong>twice</strong>: it
+    <strong>adds</strong> points (the 45% pillar) <em>and</em> <strong>multiplies</strong> the whole score (the gate).</p>
+
+    <div class="c">
+      <p class="muted" style="margin:0 0 10px;font-size:.88rem">Worked example — same Demand &amp; Scale, only choke differs:</p>
+      <div class="calc">
+        <div class="lab"></div><div class="h" style="color:#4ade80">🟢 Packed</div><div class="h" style="color:var(--orange)">🔴 Empty</div>
+        <div class="lab">Choke</div><div class="v">90</div><div class="v">20</div>
+        <div class="lab">Demand · Scale</div><div class="v dim">60 · 80</div><div class="v dim">60 · 80</div>
+        <div class="rule"></div>
+        <div class="lab">Base — add the pillars</div><div class="v">78</div><div class="v">47</div>
+        <div class="lab">Gate — 0.60 + 0.40 × choke</div><div class="v">×0.96</div><div class="v">×0.68</div>
+        <div class="rule"></div>
+        <div class="lab" style="color:var(--text);font-weight:700">EOS — base × gate</div>
+        <div class="v eos" style="color:var(--cyan)">75</div><div class="v eos" style="color:var(--orange)">32</div>
       </div>
-      <p style="margin:10px 0 0;font-size:.9rem">Same size &amp; growth — the jammed one wins
-      <strong>75 to 32</strong>. The gate turns a "meh 47" into a clear "no, 32". The thesis is <em>in the math</em>.</p>
+      <p style="margin:12px 0 0;font-size:.92rem">Same size &amp; growth — the jammed one wins
+      <strong>75 to 32</strong>. Without the gate the empty one sits at 47 and could sneak up the list;
+      the gate throws it back off.</p>
     </div>
   </section>
 
