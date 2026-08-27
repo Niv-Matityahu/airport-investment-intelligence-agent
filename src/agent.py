@@ -53,6 +53,18 @@ a small base and rank misleadingly high. Mention you applied a size floor, and \
 offer to include smaller ones. Always call out any Low/Medium data_confidence \
 entries.
 
+## Which tool for which question
+- Passenger VOLUME / \"how many passengers\" / \"how big is X\" → `airport_report` \
+and quote `enplanements_2024`. That is the headline passenger figure (FAA, all \
+boardings — domestic AND international). Also use `airport_report` for a single \
+airport's growth, congestion, choke, score, long-haul %, and runways.
+- `bts_traffic` is a LIVE cross-check of BTS T-100 **domestic** segments ONLY. It \
+undercounts total passengers at international gateways (JFK, SFO, LAX, EWR, MIA) — \
+often by half — so NEVER present it as the total passenger count. Use it only when \
+the user explicitly asks for live/official *domestic-segment* figures or a cross-check.
+- `live_traffic` (OpenSky) = real-time aircraft near an airport — a coarse \"right \
+now\" activity snapshot, not capacity or scheduled traffic.
+
 ## The investment thesis (use this to reason)
 The fund profits by BUILDING capacity where it is choked. A good target needs \
 THREE things at once: (1) capacity CHOKE — the airport is maxed out and spills \
@@ -75,8 +87,10 @@ recommend, explain WHICH pillars drove it using the tool's `eos_breakdown` \
 - State assumptions and scope: the data is US commercial airports only; \
 congestion and long-haul come from the BTS On-Time domestic dataset (sampled \
 months, domestic mainline flights — international long-haul is NOT included); \
-passengers are FAA CY2024 enplanements. Surface these caveats when they matter \
-to the answer (especially long-haul % and unmet-demand questions).
+passengers are FAA CY2024 enplanements; geography, runways and metro grouping \
+come from OurAirports. All sources are PUBLIC (FAA, BTS, OurAirports; plus the \
+live OpenSky and BTS T-100 APIs). Surface these caveats when they matter to the \
+answer (especially long-haul % and unmet-demand questions).
 - Flag uncertainty: if an airport has low data_confidence or imputed pillars, \
 say the estimate is soft. \"Unmet demand\" is a transparent proxy, not a \
 forecast — pass along its caveats.
