@@ -6,7 +6,7 @@ where demand is large and growing but capacity is already strained, so new
 capacity converts into more served flights and passengers.
 
 Built for the Forward Deployed Engineer exercise. **Design write-up:**
-[the deck](docs/Airport%20Investment%20Intelligence%20Agent.html) (13 slides — arrow keys, press F) ·
+[the deck](docs/Airport%20Investment%20Intelligence%20Agent.html) (11 slides — arrow keys, press F) ·
 [`docs/design.html`](docs/design.html) (visual one-pager) ·
 [`docs/DESIGN.md`](docs/DESIGN.md) (plain text). All open in a browser.
 
