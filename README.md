@@ -6,7 +6,8 @@ where demand is large and growing but capacity is already strained, so new
 capacity converts into more served flights and passengers.
 
 Built for the Forward Deployed Engineer exercise. **Design write-up:
-[`docs/DESIGN.md`](docs/DESIGN.md).**
+[`docs/design.html`](docs/design.html)** (visual, app-styled — open in a browser)
+or [`docs/DESIGN.md`](docs/DESIGN.md) (plain text).
 
 It answers questions like:
 - *Which airports in New England are strong candidates for terminal expansion?*
