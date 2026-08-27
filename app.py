@@ -133,6 +133,7 @@ _CSS = """
   .bub.u {background:linear-gradient(120deg,#0ea5c4,#2563eb); color:#fff; border-radius:13px 13px 3px 13px;}
   .bub.b {background:linear-gradient(135deg,#123a4d,#0f2740); color:#fff;
     border:1px solid #1c4a63; border-left:3px solid #22d3ee; border-radius:13px 13px 13px 3px;}
+  .bub.b p, .bub.b li, .bub.b span {color:#fff !important;}
   .bub.b table {border-collapse:collapse; margin:.35rem 0; font-size:.76rem; width:100%;}
   .bub.b th,.bub.b td {border:1px solid @BORDER2@; padding:2px 6px;} .bub.b th{color:@ACCENTTEXT@;}
   .bub.b code {background:@CODEBG@; padding:1px 4px; border-radius:4px;}
