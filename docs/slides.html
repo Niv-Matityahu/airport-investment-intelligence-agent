@@ -101,6 +101,25 @@
   .tg.io{background:rgba(34,197,94,.15); color:#4ade80}
   @media(max-width:760px){.step{grid-template-columns:34px 1fr} .step .tg{display:none}}
 
+  /* tool grid */
+  .tools{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px; max-width:1000px}
+  @media(max-width:760px){.tools{grid-template-columns:1fr}}
+  .tl-t{background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:12px 14px}
+  .tl-t .nm{font:.84rem ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5e6f3; font-weight:700}
+  .tl-t .ds{color:var(--text2); font-size:.87rem; margin-top:3px; line-height:1.42}
+  .tl-t .t2{display:inline-block; font-size:.6rem; font-weight:800; letter-spacing:.05em;
+    border-radius:20px; padding:2px 8px; margin-top:8px; text-transform:uppercase}
+  .t2.an{background:rgba(34,211,238,.14); color:#67e8f9}
+  .t2.lv{background:rgba(129,140,248,.18); color:#c4b5fd}
+  .t2.me{background:rgba(127,150,179,.16); color:#9fb2c9}
+  /* prompt card */
+  .prompthdr{display:inline-flex; align-items:center; gap:8px; background:var(--code);
+    border:1px solid var(--border2); border-radius:9px 9px 0 0; border-bottom:none;
+    padding:7px 14px; font:.82rem ui-monospace,Menlo,monospace; color:var(--muted); margin-top:6px}
+  .prompthdr b{color:#a5e6f3}
+  .rules li{font-size:1rem; padding:6px 0 6px 28px}
+  .rules li b{color:var(--cyan)}
+
   .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border);
     border-radius:14px; overflow:hidden; max-width:900px; margin-top:16px}
   .split>div{padding:18px 22px}
@@ -253,7 +272,44 @@
     live APIs add freshness. One LLM seam → Gemini and Claude are swappable.</p>
   </section>
 
-  <!-- 6 AI vs CODE -->
+  <!-- 6 TOOLS -->
+  <section class="slide">
+    <div class="kick">The toolbox</div>
+    <h2>9 tools — in plain words</h2>
+    <p class="muted" style="margin:-.2em 0 0">The model can't touch the data directly. It gets every
+    fact by calling one of these — and each returns numbers computed in code.</p>
+    <div class="tools">
+      <div class="tl-t"><div class="nm">resolve_airport</div>
+        <div class="ds">Turns a name into the right airport — "LA" → LAX — and lists nearby ones.</div>
+        <span class="t2 an">find</span></div>
+      <div class="tl-t"><div class="nm">airport_report</div>
+        <div class="ds">The full picture for one airport: size, growth, how jammed, and its score.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">rank_airports</div>
+        <div class="ds">Best expansion bets in a region — or the whole US.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">compare_airports</div>
+        <div class="ds">Puts airports side by side on every metric.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">long_haul_profile</div>
+        <div class="ds">Share of flights that are long-haul (2,000+ miles).</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">unmet_demand</div>
+        <div class="ds">Flights an airport is turning away because it's full — and why.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">live_traffic</div>
+        <div class="ds">Planes near an airport <em>right now</em> (OpenSky, live).</div>
+        <span class="t2 lv">live</span></div>
+      <div class="tl-t"><div class="nm">bts_traffic</div>
+        <div class="ds">Official government passenger counts — a live cross-check (BTS).</div>
+        <span class="t2 lv">live</span></div>
+      <div class="tl-t"><div class="nm">universe_summary</div>
+        <div class="ds">What data exists and what its limits are.</div>
+        <span class="t2 me">meta</span></div>
+    </div>
+  </section>
+
+  <!-- 7 AI vs CODE -->
   <section class="slide">
     <div class="kick">Where AI is used — and where it isn't</div>
     <h2>Language from AI · numbers from code</h2>
@@ -267,7 +323,38 @@
     figure without calling a data tool, the loop refuses it and forces the tool call. No hallucinated stats.</div>
   </section>
 
-  <!-- 7 DATA / HONESTY -->
+  <!-- 8 SYSTEM PROMPT -->
+  <section class="slide">
+    <div class="kick">The system prompt</div>
+    <h2>The rules that make it trustworthy</h2>
+    <p class="muted" style="margin:-.2em 0 2px">The agent's instructions, in plain words — this is what
+    turns a chatbot into an analyst you can trust.</p>
+    <div class="prompthdr">▸ <b>SYSTEM PROMPT</b> — the agent's operating rules</div>
+    <div class="cards two" style="margin-top:0">
+      <div class="c" style="border-top-left-radius:0">
+        <h3>🔒 Stay honest</h3>
+        <ul class="rules">
+          <li><b>Never state a number from memory</b> — every figure comes from a tool.</li>
+          <li><b>No data? Say so.</b> Don't guess or fake capability.</li>
+          <li><b>It ranks capacity need, not profit</b> — no ROI, no investment advice.</li>
+          <li><b>Flag the soft spots</b> — low confidence, scope, "proxy not forecast".</li>
+        </ul>
+      </div>
+      <div class="c">
+        <h3>🎯 Reason like an analyst</h3>
+        <ul class="rules">
+          <li><b>Resolve fuzzy names first</b> — "LA" → LAX before answering.</li>
+          <li><b>Apply the thesis</b> — choke is required; explain which pillars drove a score.</li>
+          <li><b>Check "#1 / highest" claims</b> before agreeing — verify, don't assume.</li>
+          <li><b>Lead with the answer</b>, concise analyst voice, offer a follow-up.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.88rem; margin-top:12px">Most of these are enforced in <em>code</em>
+    too (a grounding guard, name resolver, superlative check) — so they hold even when the model slips.</p>
+  </section>
+
+  <!-- 9 DATA / HONESTY -->
   <section class="slide">
     <div class="kick">Data &amp; completeness — honest, not hidden</div>
     <h2>All public · gaps flagged, not faked</h2>
@@ -339,7 +426,7 @@
   <div class="dots" id="dots"></div>
   <div class="nav">
     <button id="prev" aria-label="Previous">‹</button>
-    <span class="count" id="count">1 / 10</span>
+    <span class="count" id="count">1 / 12</span>
     <button id="next" aria-label="Next">›</button>
   </div>
 </div>
