@@ -79,6 +79,28 @@
   .ar{display:flex; align-items:center; color:var(--cyan); font-size:1.5rem; font-weight:700}
   @media(max-width:760px){.ar{transform:rotate(90deg); width:100%; justify-content:center}}
 
+  /* message-in -> message-out timeline */
+  .tl{position:relative; max-width:940px; margin:14px 0 0}
+  .tl:before{content:""; position:absolute; left:16px; top:22px; bottom:22px; width:2px;
+    background:linear-gradient(var(--cyan),var(--border2) 12%,var(--border2) 88%,var(--purple)); opacity:.55}
+  .step{position:relative; display:grid; grid-template-columns:34px 1fr auto; gap:16px;
+    align-items:center; padding:7px 0}
+  .step .num{width:34px;height:34px;border-radius:50%; background:var(--panel2);
+    border:1px solid var(--border2); display:flex;align-items:center;justify-content:center;
+    font-weight:800; color:var(--cyan); font-size:1.05rem; z-index:1}
+  .step.io .num{background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#04121f; border:none;
+    box-shadow:0 0 14px rgba(34,211,238,.4)}
+  .step .bd .t{font-weight:700; font-size:1.05rem}
+  .step .bd .t .em{color:var(--cyan)}
+  .step .bd .ex{color:var(--muted); font-size:.9rem; margin-top:1px}
+  .step .bd .ex code{font-size:.82rem}
+  .step .tg{font-size:.68rem; font-weight:800; letter-spacing:.03em; border-radius:20px;
+    padding:4px 11px; white-space:nowrap}
+  .tg.ai{background:rgba(129,140,248,.18); color:#c4b5fd}
+  .tg.code{background:rgba(34,211,238,.15); color:#67e8f9}
+  .tg.io{background:rgba(34,197,94,.15); color:#4ade80}
+  @media(max-width:760px){.step{grid-template-columns:34px 1fr} .step .tg{display:none}}
+
   .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border);
     border-radius:14px; overflow:hidden; max-width:900px; margin-top:16px}
   .split>div{padding:18px 22px}
@@ -182,19 +204,53 @@
 
   <!-- 5 ARCHITECTURE -->
   <section class="slide">
-    <div class="kick">Architecture &amp; flow</div>
-    <h2>AI plans · code decides · data grounds</h2>
-    <div class="flow">
-      <div class="node"><div class="t">🗣️ You</div><div class="d">chat or voice</div></div>
-      <div class="ar">▸</div>
-      <div class="node hl"><div class="t">🤖 Agent loop</div><div class="d">Gemini/Claude picks tools, narrates</div></div>
-      <div class="ar">▸</div>
-      <div class="node"><div class="t">🧮 Engine + 🛰️ live APIs</div><div class="d">scoring.py · OpenSky · BTS</div></div>
-      <div class="ar">▸</div>
-      <div class="node hl"><div class="t">✅ Grounded answer</div><div class="d">every figure traced to a tool</div></div>
+    <div class="kick">Architecture &amp; flow · one message, end to end</div>
+    <h2>From your question to a grounded answer</h2>
+    <p class="muted" style="margin:-.2em 0 4px">Following a real question:
+    <span class="cyan">"Compare LA and Santa Ana congestion"</span></p>
+    <div class="tl">
+      <div class="step io">
+        <div class="num">1</div>
+        <div class="bd"><div class="t">Message in</div>
+          <div class="ex">typed or spoken — voice is transcribed to text by Gemini</div></div>
+        <div class="tg io">IN</div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div class="bd"><div class="t">Resolve the names</div>
+          <div class="ex">"LA" → <span class="cyan">LAX</span>, "Santa Ana" → <span class="cyan">SNA</span>
+          &nbsp;·&nbsp; <code>resolve_airport</code></div></div>
+        <div class="tg code">CODE</div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div class="bd"><div class="t">Model picks the tool</div>
+          <div class="ex">chooses <code>compare_airports(LAX, SNA)</code> — the LLM plans, doesn't compute</div></div>
+        <div class="tg ai">AI</div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div class="bd"><div class="t">Compute the facts</div>
+          <div class="ex"><code>scoring.py</code> returns code-computed numbers (or a live API for "right now")</div></div>
+        <div class="tg code">CODE</div>
+      </div>
+      <div class="step">
+        <div class="num">5</div>
+        <div class="bd"><div class="t">Grounding check</div>
+          <div class="ex">every figure must trace to a tool — else the loop forces another call</div></div>
+        <div class="tg code">CODE</div>
+      </div>
+      <div class="step io">
+        <div class="num">6</div>
+        <div class="bd"><div class="t">Message out</div>
+          <div class="ex">plain-English answer, streamed &amp; remembered for follow-ups —
+          <span class="cyan">"Both Elevated: LAX 52.4, SNA 52.7"</span></div></div>
+        <div class="tg io">OUT</div>
+      </div>
     </div>
-    <p style="margin-top:18px">Heavy analytics read a <strong>cached snapshot</strong> (fast, reproducible);
-    two <strong>live public APIs</strong> add freshness. One LLM seam → Gemini and Claude are swappable.</p>
+    <p class="muted" style="font-size:.9rem; margin-top:14px">Steps 2–5 loop up to ~8 rounds for
+    multi-part questions. Heavy data comes from a <strong>cached snapshot</strong> (fast, reproducible);
+    live APIs add freshness. One LLM seam → Gemini and Claude are swappable.</p>
   </section>
 
   <!-- 6 AI vs CODE -->
