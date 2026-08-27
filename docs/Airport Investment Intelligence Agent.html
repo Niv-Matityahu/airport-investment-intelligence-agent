@@ -127,6 +127,8 @@
   .calc .v.dim{color:var(--muted); font-weight:600}
   .calc .rule{grid-column:1/-1; height:1px; background:var(--border2); margin:2px 0}
   .calc .eos{font-size:1.45rem; font-weight:800}
+  .closechip{background:var(--panel2); border:1px solid var(--border2); border-radius:12px;
+    padding:13px 20px; font-weight:700; font-size:1.05rem}
 
   .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border);
     border-radius:14px; overflow:hidden; max-width:900px; margin-top:16px}
@@ -413,11 +415,13 @@
   <section class="slide">
     <div class="kick">In one line</div>
     <h1><span class="g">Choke-gated</span> scoring,<br>a grounded agent.</h1>
-    <p class="lead">Deterministic KPI that encodes the investment thesis · an AI that explains but never
-    invents · honest about what it doesn't know.</p>
-    <p style="margin-top:18px"><span class="pill">read one file → src/scoring.py</span></p>
-    <p class="muted" style="margin-top:20px">Decision-support, not investment advice. Python · Streamlit ·
-    Gemini/Claude · pandas.</p>
+    <p class="lead" style="max-width:56ch">A deterministic KPI that bakes the investment thesis into the
+    math — and an AI that explains it, but never invents a number.</p>
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:30px">
+      <span class="closechip">🎯 Thesis in the math</span>
+      <span class="closechip">🔒 Zero invented numbers</span>
+      <span class="closechip">🧭 Honest about its limits</span>
+    </div>
   </section>
 
 </div>
