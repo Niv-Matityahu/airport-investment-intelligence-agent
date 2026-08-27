@@ -3,449 +3,482 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Airport Investment Intelligence Agent — Design</title>
+<title>Airport Investment Intelligence Agent — Deck</title>
 <style>
   :root{
-    --bg:#0b1524; --panel:#0f1e33; --panel2:#122239; --topbar:#0e1c30;
-    --border:#1c3350; --border2:#23405f; --text:#e6edf5; --text2:#cbd8e8;
-    --muted:#7f96b3; --cyan:#22d3ee; --blue:#3b82f6; --indigo:#818cf8; --purple:#c084fc;
-    --good:#22c55e; --warn:#f59e0b; --orange:#f97316;
-    --chip:#16304c; --code:#0d1c30;
+    --bg:#0b1524; --panel:#0f1e33; --panel2:#122239; --border:#1c3350; --border2:#23405f;
+    --text:#e6edf5; --text2:#cbd8e8; --muted:#7f96b3;
+    --cyan:#22d3ee; --blue:#3b82f6; --indigo:#818cf8; --purple:#c084fc;
+    --good:#22c55e; --warn:#f59e0b; --orange:#f97316; --code:#0d1c30;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
+  html,body{height:100%}
   body{margin:0; background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(34,211,238,.08), transparent 60%),
+      radial-gradient(1100px 620px at 82% -12%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(192,132,252,.07), transparent 60%),
       var(--bg);
-    color:var(--text);
-    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text); overflow:hidden;
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;}
-  .wrap{max-width:1000px; margin:0 auto; padding:0 20px 80px;}
 
-  /* top bar (mirrors the app) */
-  .topbar{position:sticky; top:0; z-index:20; background:rgba(14,28,48,.85);
-    backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
-    display:flex; align-items:center; gap:11px; padding:12px 20px;}
-  .topbar .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);
-    box-shadow:0 0 12px var(--cyan);}
-  .topbar b{font-weight:700; letter-spacing:.2px}
-  .topbar .tag{margin-left:auto; color:var(--muted); font-size:.8rem;
-    border:1px solid var(--border2); border-radius:20px; padding:3px 11px;}
-
-  /* hero */
-  .hero{padding:52px 0 26px; border-bottom:1px solid var(--border); margin-bottom:34px;}
-  .hero .kicker{color:var(--cyan); font-size:.8rem; font-weight:700;
-    text-transform:uppercase; letter-spacing:.14em;}
-  .hero h1{font-size:2.35rem; line-height:1.15; margin:.35em 0 .3em; letter-spacing:-.5px;}
-  .hero h1 span{background:linear-gradient(120deg,var(--cyan),var(--purple));
-    -webkit-background-clip:text; background-clip:text; color:transparent;}
-  .hero p{color:var(--text2); font-size:1.08rem; max-width:70ch; margin:.2em 0;}
-  .hero .lead{color:var(--muted); font-size:.95rem; margin-top:14px;}
-
-  h2{font-size:1.5rem; margin:52px 0 6px; letter-spacing:-.3px; scroll-margin-top:70px;}
-  h2 .n{color:var(--cyan); font-variant-numeric:tabular-nums; margin-right:10px; font-weight:700;}
-  h3{font-size:1.05rem; margin:26px 0 8px; color:var(--text);}
-  .sub{color:var(--muted); margin:.2em 0 18px; max-width:78ch;}
-  p{color:var(--text2)} strong{color:var(--text)}
-  a{color:var(--cyan); text-decoration:none} a:hover{text-decoration:underline}
-
-  .card{background:var(--panel); border:1px solid var(--border);
-    border-radius:14px; padding:20px 22px; margin:16px 0;}
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
-  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
-  @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+  .deck{position:fixed; inset:0}
+  .slide{position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+    padding:6vh 8vw 92px; opacity:0; transform:translateY(14px) scale(.995); pointer-events:none;
+    transition:opacity .38s ease, transform .38s ease; overflow-y:auto;}
+  .slide.active{opacity:1; transform:none; pointer-events:auto}
+  .kick{color:var(--cyan); font-size:.82rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:.16em; margin-bottom:14px}
+  h1{font-size:clamp(2rem,5.5vw,3.6rem); line-height:1.08; margin:0 0 .25em; letter-spacing:-1px}
+  h1 .g{background:linear-gradient(120deg,var(--cyan),var(--purple));
+    -webkit-background-clip:text; background-clip:text; color:transparent}
+  h2{font-size:clamp(1.5rem,3.6vw,2.4rem); line-height:1.12; margin:0 0 .5em; letter-spacing:-.5px}
+  p{color:var(--text2); font-size:clamp(1rem,1.5vw,1.2rem); max-width:64ch; margin:.35em 0}
+  .lead{color:var(--muted)}
+  strong{color:var(--text)} .cyan{color:var(--cyan)} .muted{color:var(--muted)}
+  em{color:var(--purple); font-style:normal}
 
   .pill{display:inline-block; background:var(--code); border:1px solid var(--border2);
-    border-radius:8px; padding:2px 8px; font:.86rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
-    color:var(--text2);}
-  code{background:var(--code); border:1px solid var(--border2); border-radius:6px;
-    padding:1px 6px; font:.85em ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5e6f3;}
-  .cyan{color:var(--cyan)} .muted{color:var(--muted)} .small{font-size:.86rem}
+    border-radius:10px; padding:6px 14px; font:1.05rem ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:#a5e6f3; margin:6px 0}
+  code{background:var(--code); border:1px solid var(--border2); border-radius:6px; padding:1px 7px;
+    font:.9em ui-monospace,Menlo,monospace; color:#a5e6f3}
 
-  .badge{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:700;
-    border-radius:20px; padding:3px 10px;}
-  .b-good{background:rgba(34,197,94,.14); color:#4ade80}
-  .b-warn{background:rgba(245,158,11,.15); color:#fbbf24}
-  .b-low{background:rgba(249,115,22,.15); color:#fb923c}
+  .kpis{display:flex; gap:34px; flex-wrap:wrap; margin-top:30px}
+  .kpis .v{font-size:clamp(1.8rem,4vw,2.8rem); font-weight:800; letter-spacing:-1px}
+  .kpis .v.g{background:linear-gradient(120deg,var(--cyan),var(--purple));
+    -webkit-background-clip:text; background-clip:text; color:transparent}
+  .kpis .k{color:var(--muted); font-size:.9rem}
 
-  /* the "so what" callout */
-  .key{border-left:3px solid var(--cyan); background:linear-gradient(135deg,#123a4d,#0f2740);
-    border-radius:0 12px 12px 0; padding:14px 18px; margin:18px 0;}
-  .key b{color:var(--cyan)}
-  .warnbox{border-left:3px solid var(--orange); background:rgba(249,115,22,.06);
-    border-radius:0 12px 12px 0; padding:14px 18px; margin:18px 0;}
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:22px; max-width:960px}
+  .cards.two{grid-template-columns:1fr 1fr}
+  @media(max-width:760px){.cards,.cards.two{grid-template-columns:1fr}}
+  .c{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px}
+  .c.hl{border-color:var(--cyan); box-shadow:0 0 0 1px rgba(34,211,238,.25) inset}
+  .c h3{margin:.1em 0 .3em; font-size:1.15rem}
+  .c p{font-size:.95rem; margin:.2em 0}
+  .tagline{display:inline-block; font-size:.72rem; font-weight:700; border-radius:20px;
+    padding:3px 10px; background:rgba(34,197,94,.14); color:#4ade80; margin-bottom:8px}
 
-  /* flow diagram */
-  .flow{display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; margin:8px 0}
+  ul{margin:.4em 0; padding-left:0; list-style:none; max-width:60ch}
+  li{position:relative; padding:8px 0 8px 30px; color:var(--text2); font-size:clamp(1rem,1.5vw,1.15rem)}
+  li:before{content:"→"; position:absolute; left:0; color:var(--cyan); font-weight:700}
+  li b{color:var(--text)}
+
+  /* mini bars / gate visual */
+  .track{background:var(--code); border:1px solid var(--border); border-radius:7px; overflow:hidden}
+  .bar{height:26px; border-radius:6px; display:flex; align-items:center; padding:0 10px;
+    color:#04121f; font-weight:800; font-size:.82rem; white-space:nowrap}
+  .r{display:grid; grid-template-columns:96px 1fr; gap:12px; align-items:center; margin:8px 0}
+  .r .l{color:var(--text2); text-align:right; font-size:.86rem; font-weight:600}
+
+  .flow{display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; margin-top:10px; max-width:1000px}
   .node{flex:1 1 150px; background:var(--panel2); border:1px solid var(--border2);
-    border-radius:12px; padding:13px 14px; min-width:140px;}
-  .node .t{font-weight:700; font-size:.92rem; margin-bottom:3px}
-  .node .d{color:var(--muted); font-size:.8rem; line-height:1.45}
-  .node.accent{border-color:var(--cyan); box-shadow:0 0 0 1px rgba(34,211,238,.25) inset}
-  .arrow{display:flex; align-items:center; color:var(--cyan); font-size:1.4rem; font-weight:700}
-  @media(max-width:720px){.arrow{transform:rotate(90deg); justify-content:center; width:100%}}
+    border-radius:12px; padding:12px 14px; min-width:130px}
+  .node.hl{border-color:var(--cyan)}
+  .node .t{font-weight:700; font-size:.95rem} .node .d{color:var(--muted); font-size:.8rem; margin-top:2px}
+  .ar{display:flex; align-items:center; color:var(--cyan); font-size:1.5rem; font-weight:700}
+  @media(max-width:760px){.ar{transform:rotate(90deg); width:100%; justify-content:center}}
 
-  /* bars */
-  .bar{height:26px; border-radius:7px; display:flex; align-items:center; padding:0 10px;
-    color:#04121f; font-weight:800; font-size:.8rem; white-space:nowrap; min-width:34px;}
-  .track{background:var(--code); border:1px solid var(--border); border-radius:7px; overflow:hidden;}
-  .row{display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:center; margin:9px 0}
-  .row .lab{color:var(--text2); font-size:.9rem; text-align:right; font-weight:600}
-  .stack{display:flex; height:30px; border-radius:8px; overflow:hidden; border:1px solid var(--border)}
-  .seg{display:flex; align-items:center; justify-content:center; color:#04121f;
-    font-weight:800; font-size:.78rem}
-  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:.82rem}
+  /* message-in -> message-out timeline */
+  .tl{position:relative; max-width:940px; margin:14px 0 0}
+  .tl:before{content:""; position:absolute; left:16px; top:22px; bottom:22px; width:2px;
+    background:linear-gradient(var(--cyan),var(--border2) 12%,var(--border2) 88%,var(--purple)); opacity:.55}
+  .step{position:relative; display:grid; grid-template-columns:34px 1fr auto; gap:16px;
+    align-items:center; padding:7px 0}
+  .step .num{width:34px;height:34px;border-radius:50%; background:var(--panel2);
+    border:1px solid var(--border2); display:flex;align-items:center;justify-content:center;
+    font-weight:800; color:var(--cyan); font-size:1.05rem; z-index:1}
+  .step.io .num{background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#04121f; border:none;
+    box-shadow:0 0 14px rgba(34,211,238,.4)}
+  .step .bd .t{font-weight:700; font-size:1.05rem}
+  .step .bd .t .em{color:var(--cyan)}
+  .step .bd .ex{color:var(--muted); font-size:.9rem; margin-top:1px}
+  .step .bd .ex code{font-size:.82rem}
+  .step .tg{font-size:.68rem; font-weight:800; letter-spacing:.03em; border-radius:20px;
+    padding:4px 11px; white-space:nowrap}
+  .tg.ai{background:rgba(129,140,248,.18); color:#c4b5fd}
+  .tg.code{background:rgba(34,211,238,.15); color:#67e8f9}
+  .tg.io{background:rgba(34,197,94,.15); color:#4ade80}
+  @media(max-width:760px){.step{grid-template-columns:34px 1fr} .step .tg{display:none}}
+
+  /* tool grid */
+  .tools{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px; max-width:1000px}
+  @media(max-width:760px){.tools{grid-template-columns:1fr}}
+  .tl-t{background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:12px 14px}
+  .tl-t .nm{font:.84rem ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5e6f3; font-weight:700}
+  .tl-t .ds{color:var(--text2); font-size:.87rem; margin-top:3px; line-height:1.42}
+  .tl-t .t2{display:inline-block; font-size:.6rem; font-weight:800; letter-spacing:.05em;
+    border-radius:20px; padding:2px 8px; margin-top:8px; text-transform:uppercase}
+  .t2.an{background:rgba(34,211,238,.14); color:#67e8f9}
+  .t2.lv{background:rgba(129,140,248,.18); color:#c4b5fd}
+  .t2.me{background:rgba(127,150,179,.16); color:#9fb2c9}
+  /* prompt card */
+  .prompthdr{display:inline-flex; align-items:center; gap:8px; background:var(--code);
+    border:1px solid var(--border2); border-radius:9px 9px 0 0; border-bottom:none;
+    padding:7px 14px; font:.82rem ui-monospace,Menlo,monospace; color:var(--muted); margin-top:6px}
+  .prompthdr b{color:#a5e6f3}
+  .rules li{font-size:1rem; padding:6px 0 6px 28px}
+  .rules li b{color:var(--cyan)}
+
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border);
+    border-radius:14px; overflow:hidden; max-width:900px; margin-top:16px}
+  .split>div{padding:18px 22px}
+  .split .a{background:linear-gradient(135deg,#141a33,#0f1830)}
+  .split .b{background:var(--panel2)}
+  .split h4{margin:0 0 8px; font-size:1.05rem}
+  @media(max-width:760px){.split{grid-template-columns:1fr}}
+
+  .stack{display:flex; height:32px; border-radius:8px; overflow:hidden; border:1px solid var(--border); max-width:620px}
+  .seg{display:flex; align-items:center; justify-content:center; color:#04121f; font-weight:800; font-size:.8rem}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:.84rem}
   .legend span{display:inline-flex; align-items:center; gap:6px}
   .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
 
-  /* tables */
-  table{width:100%; border-collapse:collapse; margin:6px 0; font-size:.9rem}
-  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--border)}
-  th{color:var(--muted); font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em}
-  td{color:var(--text2)} tr:last-child td{border-bottom:none}
-  .tblwrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px}
+  .warn{border-left:3px solid var(--orange); background:rgba(249,115,22,.07);
+    border-radius:0 12px 12px 0; padding:12px 18px; margin-top:16px; max-width:800px}
+  .warn b{color:#fb923c}
 
-  ul.clean{list-style:none; padding:0; margin:8px 0}
-  ul.clean li{padding:7px 0 7px 26px; position:relative; color:var(--text2); border-bottom:1px solid var(--border)}
-  ul.clean li:last-child{border-bottom:none}
-  ul.clean li:before{content:"→"; position:absolute; left:2px; color:var(--cyan); font-weight:700}
-
-  .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border); border-radius:12px; overflow:hidden}
-  .split>div{padding:18px 20px}
-  .split .ai{background:linear-gradient(135deg,#141a33,#0f1830)}
-  .split .code{background:var(--panel2)}
-  .split h4{margin:0 0 10px; font-size:.98rem}
-  @media(max-width:720px){.split{grid-template-columns:1fr}}
-
-  .toolgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
-  @media(max-width:720px){.toolgrid{grid-template-columns:1fr}}
-  .tool{background:var(--panel2); border:1px solid var(--border); border-radius:11px; padding:12px 14px}
-  .tool .nm{font:.82rem ui-monospace,Menlo,monospace; color:#a5e6f3; font-weight:700}
-  .tool .ds{color:var(--muted); font-size:.82rem; margin-top:3px; line-height:1.45}
-
-  .disc{color:var(--muted); font-size:.82rem; text-align:center; border-top:1px solid var(--border);
-    margin-top:50px; padding-top:22px}
-  .kpi{display:flex; gap:22px; flex-wrap:wrap; margin:6px 0}
-  .kpi div{flex:1 1 120px}
-  .kpi .v{font-size:1.7rem; font-weight:800; color:var(--text); letter-spacing:-.5px}
-  .kpi .v.cy{background:linear-gradient(120deg,var(--cyan),var(--purple));
-    -webkit-background-clip:text; background-clip:text; color:transparent;}
-  .kpi .k{color:var(--muted); font-size:.8rem}
+  /* nav chrome */
+  .navbar{position:fixed; left:0; right:0; bottom:0; display:flex; align-items:center; gap:14px;
+    padding:12px 22px; background:linear-gradient(0deg,rgba(11,21,36,.95),rgba(11,21,36,.6));
+    z-index:30}
+  .brand{display:flex; align-items:center; gap:9px; color:var(--muted); font-size:.82rem}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan); box-shadow:0 0 10px var(--cyan)}
+  .dots{display:flex; gap:7px; margin:0 auto}
+  .dots i{width:8px;height:8px;border-radius:50%;background:var(--border2); cursor:pointer; transition:.2s}
+  .dots i.on{background:var(--cyan); width:22px; border-radius:5px}
+  .nav{display:flex; gap:8px}
+  .nav button{background:var(--panel2); border:1px solid var(--border2); color:var(--text2);
+    width:38px;height:34px; border-radius:9px; font-size:1.1rem; cursor:pointer}
+  .nav button:hover{border-color:var(--cyan); color:var(--cyan)}
+  .count{color:var(--muted); font-size:.82rem; min-width:44px; text-align:center}
+  .hint{position:fixed; top:16px; right:20px; color:var(--muted); font-size:.75rem; opacity:.7}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <span class="dot"></span><b>AVIA · Airport Investment Intelligence</b>
-  <span class="tag">Design &amp; Architecture</span>
-</div>
+<div class="deck" id="deck">
 
-<div class="wrap">
-
-  <!-- HERO -->
-  <div class="hero">
-    <div class="kicker">FDE Take-home · Design Document</div>
-    <h1>Where should a fund<br><span>build airport capacity?</span></h1>
-    <p>A conversational agent that helps an analyst find the <strong>US airports where a
-    terminal or runway build pays off most</strong> — airports that are big, growing,
-    <em>and</em> already jammed, so new capacity turns straight into more flights and passengers.</p>
-    <div class="kpi">
-      <div><div class="v cy">478</div><div class="k">US airports scored</div></div>
+  <!-- 1 TITLE -->
+  <section class="slide">
+    <div class="kick">Forward Deployed Engineer · Take-home</div>
+    <h1>Airport Investment<br><span class="g">Intelligence Agent</span></h1>
+    <p class="lead">An AI agent that helps analysts find the <strong>US airports where building
+    capacity pays off most</strong> — big, growing, <em>and</em> already jammed.</p>
+    <div class="kpis">
+      <div><div class="v g">478</div><div class="k">airports scored</div></div>
       <div><div class="v">7</div><div class="k">agent tools</div></div>
       <div><div class="v">4</div><div class="k">public data sources</div></div>
       <div><div class="v">0</div><div class="k">numbers the LLM invents</div></div>
     </div>
-    <p class="lead">It answers questions like <span class="cyan">"Which New England airports are
-    strong expansion candidates?"</span> · <span class="cyan">"Compare LA and Santa Ana congestion"</span>
-    · <span class="cyan">"% long-haul out of Anchorage?"</span> · <span class="cyan">"Unmet demand at
-    SFO, and why?"</span></p>
-  </div>
+  </section>
 
-  <!-- 1. THE IDEA -->
-  <h2><span class="n">1</span>The idea in one line</h2>
-  <p class="sub">The business makes money by <strong>building physical capacity</strong> and earning
-  fees + passenger revenue on the new traffic. That only pays off at a <strong>choke point</strong> —
-  an airport that is full and turning flights away. A good target needs <strong>three things at once</strong>:</p>
+  <!-- 2 THE JOB -->
+  <section class="slide">
+    <div class="kick">The job</div>
+    <h2>Help a fund pick where to build</h2>
+    <p>The firm invests in airport modernization. It needs to know <strong>which airports a terminal
+    or runway build will make most productive</strong> — and to <em>ask in plain English</em>.</p>
+    <ul>
+      <li>"Which <b>New England</b> airports are strong expansion candidates?"</li>
+      <li>"Compare <b>LA and Santa Ana</b> congestion."</li>
+      <li>"% <b>long-haul</b> out of Anchorage?"</li>
+      <li>"<b>Unmet demand</b> at SFO — and why?"</li>
+    </ul>
+  </section>
 
-  <div class="grid3">
-    <div class="card" style="text-align:center">
-      <div class="badge b-good" style="margin-bottom:8px">the differentiator</div>
-      <h3 style="margin:.2em 0">🚦 Choke</h3>
-      <p class="small muted">It's jammed — chronic delays, runways near 100% use, or the FAA legally
-      caps flights. <strong style="color:var(--text)">If it has room, no build is needed.</strong></p>
+  <!-- 3 INSIGHT -->
+  <section class="slide">
+    <div class="kick">The insight most candidates miss</div>
+    <h2>Big &amp; growing isn't enough — it must be <span class="g">choked</span></h2>
+    <div class="cards">
+      <div class="c hl"><span class="tagline">the differentiator</span>
+        <h3>🚦 Choke</h3><p class="muted">Jammed: delays, ~100% runway use, or FAA flight caps.
+        <strong>If it has room, no build is needed.</strong></p></div>
+      <div class="c"><h3>📈 Demand</h3><p class="muted">Traffic is growing, so new capacity gets used.</p></div>
+      <div class="c"><h3>🏗️ Scale</h3><p class="muted">Big enough to justify a major build.</p></div>
     </div>
-    <div class="card" style="text-align:center">
-      <h3 style="margin:.2em 0">📈 Demand</h3>
-      <p class="small muted">Traffic is growing, so the new capacity will actually get used.</p>
+    <p style="margin-top:20px">A huge airport with spare room just absorbs growth. <strong>Choke is what
+    turns a build into profit</strong> — so the whole score is built around it.</p>
+  </section>
+
+  <!-- 4 THE SCORE -->
+  <section class="slide">
+    <div class="kick">The scoring logic (deterministic, not the LLM)</div>
+    <h2>One number: the Expansion Opportunity Score</h2>
+    <span class="pill">EOS = ( Choke 45% + Demand 30% + Scale 25% ) × Choke-gate</span>
+    <p class="muted" style="margin:.3em 0 14px">The <strong>gate</strong> = <code>0.60 + 0.40 × choke</code>
+    <span style="font-size:.85em">(choke scaled 0→1)</span> shrinks the score when an airport isn't jammed —
+    so scale + growth alone can't reach the top.</p>
+    <div class="cards two">
+      <div class="c"><h4 style="margin:0 0 8px">✅ Charlotte — jammed &amp; big</h4>
+        <div class="r"><div class="l">Base</div><div class="track"><div class="bar" style="width:89%;background:#2a4a63">88.7</div></div></div>
+        <div class="r"><div class="l">× 0.99</div><div class="track"><div class="bar" style="width:88%;background:linear-gradient(90deg,var(--cyan),var(--blue))">EOS 88</div></div></div></div>
+      <div class="c"><h4 style="margin:0 0 8px">❌ Maui — big, but has room</h4>
+        <div class="r"><div class="l">Base</div><div class="track"><div class="bar" style="width:37%;background:#2a4a63">37.4</div></div></div>
+        <div class="r"><div class="l">× 0.71</div><div class="track"><div class="bar" style="width:27%;background:linear-gradient(90deg,var(--orange),#b45309)">EOS 27</div></div></div></div>
     </div>
-    <div class="card" style="text-align:center">
-      <h3 style="margin:.2em 0">🏗️ Scale</h3>
-      <p class="small muted">Big enough that a hundreds-of-millions build is worth it.</p>
-    </div>
-  </div>
+    <p style="margin-top:14px"><strong>The gate is the trick:</strong> a plain weighted sum floats Maui up
+    on its size; the gate correctly drags it to 27. The thesis is <em>in the math</em>.</p>
+  </section>
 
-  <div class="key"><b>Why most people get this wrong:</b> the obvious move is to rank airports by
-  size or growth. But a huge, fast-growing airport with <em>spare room</em> doesn't need a build —
-  it just absorbs the growth. <b>Choke is what makes capacity profitable</b>, so we build the whole
-  score around it.</div>
-
-  <!-- 2. THE SCORE -->
-  <h2><span class="n">2</span>The score — how it works (in plain English)</h2>
-  <p class="sub">Every airport gets one number from <strong>0–100</strong>: the
-  <strong>Expansion Opportunity Score (EOS)</strong>. Higher = a better place to build. It blends the
-  three ingredients, then multiplies by a <strong>choke gate</strong>.</p>
-
-  <div class="card">
-    <p style="margin-top:0"><span class="pill">EOS = ( Choke&nbsp;45% + Demand&nbsp;30% + Scale&nbsp;25% ) × Choke-gate</span></p>
-    <p class="small muted">Each ingredient is a <strong>national percentile</strong> (0–100) — how an
-    airport ranks against every other. Percentiles are used because they're unit-free, robust to
-    outliers, and easy to read.</p>
-
-    <div class="row"><div class="lab">Choke · 45%</div>
-      <div class="track"><div class="bar" style="width:45%;background:var(--cyan)">45%</div></div></div>
-    <div class="row"><div class="lab">Demand · 30%</div>
-      <div class="track"><div class="bar" style="width:30%;background:var(--blue)">30%</div></div></div>
-    <div class="row"><div class="lab">Scale · 25%</div>
-      <div class="track"><div class="bar" style="width:25%;background:var(--indigo)">25%</div></div></div>
-  </div>
-
-  <h3>The choke gate is the whole trick</h3>
-  <p class="sub"><span class="pill">gate = 0.60 + 0.40 × choke</span>
-  <span class="small muted">(choke scaled 0→1, i.e. <code>choke_pct ÷ 100</code>)</span> &nbsp; The gate
-  <strong>shrinks the score when an airport isn't jammed</strong>. So an airport can't ride scale + growth
-  to the top — it needs a real bottleneck. The thesis is baked into the math, not left to the LLM.</p>
-
-  <div class="grid2">
-    <div class="card">
-      <h4 style="margin:0 0 4px">✅ Charlotte (CLT) — jammed &amp; big</h4>
-      <p class="small muted" style="margin:0 0 12px">choke 98th pct → gate 0.99 (barely touched)</p>
-      <div class="row"><div class="lab">Base</div>
-        <div class="track"><div class="bar" style="width:88.7%;background:#2a4a63">88.7</div></div></div>
-      <div class="row"><div class="lab">× gate 0.99</div>
-        <div class="track"><div class="bar" style="width:88.2%;background:linear-gradient(90deg,var(--cyan),var(--blue))">EOS 88.2</div></div></div>
-    </div>
-    <div class="card">
-      <h4 style="margin:0 0 4px">❌ Maui (OGG) — big, but has room</h4>
-      <p class="small muted" style="margin:0 0 12px">choke 28th pct → gate 0.71 (pulls it down hard)</p>
-      <div class="row"><div class="lab">Base</div>
-        <div class="track"><div class="bar" style="width:37.4%;background:#2a4a63">37.4</div></div></div>
-      <div class="row"><div class="lab">× gate 0.71</div>
-        <div class="track"><div class="bar" style="width:26.6%;background:linear-gradient(90deg,var(--orange),#b45309)">EOS 26.6</div></div></div>
-    </div>
-  </div>
-  <div class="key"><b>Read it:</b> a plain weighted sum would score Maui ~37 and float it up the list
-  on its size. The gate drags it to <b>27</b> — correctly saying "growing tourism, but it isn't choked,
-  so a build won't pay." That single design choice is what makes the ranking match the investment thesis.</div>
-
-  <p class="sub">Every score is <strong>fully decomposable</strong> — the agent shows each ingredient's
-  percentile, weight and contribution, so it can <em>explain</em> a ranking instead of asserting it.
-  Top 5 nationally today: <span class="cyan">CLT 88 · DFW 83 · PHX 82 · SAN 81 · DEN 81</span> —
-  all big, choked hubs. ✔️ face-valid.</p>
-
-  <!-- 3. ARCHITECTURE -->
-  <h2><span class="n">3</span>Architecture &amp; flow</h2>
-  <p class="sub">Three clean layers. The LLM <strong>plans and explains</strong>; <strong>code decides
-  every number</strong>; all analytics read a <strong>cached snapshot</strong> built once from public
-  data — fast, and the same answer every run.</p>
-
-  <div class="card">
-    <div class="flow">
-      <div class="node"><div class="t">🗣️ You (chat / voice)</div><div class="d">a question in plain English</div></div>
-      <div class="arrow">▸</div>
-      <div class="node accent"><div class="t">🤖 Agent loop</div><div class="d">Gemini / Claude picks tools, runs ≤8 rounds, narrates</div></div>
-      <div class="arrow">▸</div>
-      <div class="node"><div class="t">🧮 Deterministic engine</div><div class="d">scoring.py computes every number from the snapshot</div></div>
-      <div class="arrow">▸</div>
-      <div class="node accent"><div class="t">✅ Grounded answer</div><div class="d">every figure traced to a tool — no invented stats</div></div>
-    </div>
-    <p class="small muted" style="margin-bottom:0">The heavy data sits in a <code>data/airport_snapshot.parquet</code>
-    built once, offline, from the public sources — so the demo is fast and gives the same answer every time.
-    The LLM sits behind one seam (<code>llm.py</code>), so Gemini and Claude are interchangeable.</p>
-  </div>
-
-  <h3>What happens on one question</h3>
-  <ul class="clean">
-    <li><strong>Understand &amp; resolve</strong> — "LA" → <code>resolve_airport</code> → LAX (and it lists
-    SNA/BUR siblings). Ambiguous names like "Portland" are disambiguated, not guessed.</li>
-    <li><strong>Pick tools</strong> — the model chooses <code>rank_airports</code>, <code>compare_airports</code>,
-    <code>airport_report</code>… and can call several at once.</li>
-    <li><strong>Compute in code</strong> — the tool returns code-computed facts (never the model's memory).</li>
-    <li><strong>Explain</strong> — the model turns the numbers into an analyst-style answer with the caveats
-    that matter, and handles follow-ups (it remembers the conversation).</li>
-  </ul>
-
-  <!-- 4. DATA -->
-  <h2><span class="n">4</span>Data &amp; completeness (the honest part)</h2>
-  <p class="sub">All sources are <strong>public</strong>. Where data is thin or missing, the tool
-  <strong>says so</strong> rather than hiding it — that honesty is a feature, not an apology.</p>
-
-  <div class="tblwrap">
-  <table>
-    <tr><th>Source</th><th>Type</th><th>Gives us</th><th>Feeds</th></tr>
-    <tr><td>OurAirports</td><td>public CSV</td><td>location, region, runways</td><td>map · utilization</td></tr>
-    <tr><td>FAA ACAIS (CY2024)</td><td>public file</td><td>passengers 2024 vs 2023</td><td><span class="cyan">Scale + Demand</span></td></tr>
-    <tr><td>BTS On-Time (2024)</td><td>public file</td><td>delays, cancellations, route distance</td><td><span class="cyan">Choke</span> · long-haul</td></tr>
-    <tr><td>FAA capacity designations</td><td>curated (Level-3, Core-30)</td><td>slot-controlled + Core-30 flags</td><td><span class="cyan">Choke</span> bonus</td></tr>
-  </table>
-  </div>
-
-  <div class="grid2">
-    <div class="card">
-      <h4 style="margin:0 0 12px">Coverage — of 478 airports</h4>
-      <div class="row"><div class="lab">Scored</div>
-        <div class="track"><div class="bar" style="width:100%;background:var(--cyan)">478 · 100%</div></div></div>
-      <div class="row"><div class="lab">Passenger data</div>
-        <div class="track"><div class="bar" style="width:98.5%;background:var(--blue)">471 · 99%</div></div></div>
-      <div class="row"><div class="lab">Delay data</div>
-        <div class="track"><div class="bar" style="width:69.5%;background:var(--indigo)">332 · 69%</div></div></div>
-      <p class="small muted" style="margin:10px 0 0"><strong>146 airports (31%) have no delay data</strong>
-      — BTS only covers larger carriers. Their choke is estimated and flagged; verified they don't sneak
-      into the top ranks.</p>
-    </div>
-    <div class="card">
-      <h4 style="margin:0 0 12px">Per-airport confidence</h4>
-      <div class="stack">
-        <div class="seg" style="width:26.4%;background:var(--good)">High 126</div>
-        <div class="seg" style="width:49.2%;background:var(--warn)">Medium 235</div>
-        <div class="seg" style="width:24.5%;background:var(--orange)">Low 117</div>
+  <!-- 5 ARCHITECTURE -->
+  <section class="slide">
+    <div class="kick">Architecture &amp; flow · one message, end to end</div>
+    <h2>From your question to a grounded answer</h2>
+    <p class="muted" style="margin:-.2em 0 4px">Following a real question:
+    <span class="cyan">"Compare LA and Santa Ana congestion"</span></p>
+    <div class="tl">
+      <div class="step io">
+        <div class="num">1</div>
+        <div class="bd"><div class="t">Message in</div>
+          <div class="ex">typed or spoken — voice is transcribed to text by Gemini</div></div>
+        <div class="tg io">IN</div>
       </div>
-      <div class="legend">
-        <span><i class="sw" style="background:var(--good)"></i>full data, big sample</span>
-        <span><i class="sw" style="background:var(--warn)"></i>some estimated / smaller</span>
-        <span><i class="sw" style="background:var(--orange)"></i>thin / tiny base</span>
+      <div class="step">
+        <div class="num">2</div>
+        <div class="bd"><div class="t">Resolve the names</div>
+          <div class="ex">"LA" → <span class="cyan">LAX</span>, "Santa Ana" → <span class="cyan">SNA</span>
+          &nbsp;·&nbsp; <code>resolve_airport</code></div></div>
+        <div class="tg code">CODE</div>
       </div>
-      <p class="small muted" style="margin:12px 0 0">Every row carries a <strong>●</strong> dot so the
-      analyst knows how much to trust it. Rankings apply a <strong>500k-passenger floor</strong> so a
-      tiny airport's volatile "+300%" can't top the list.</p>
+      <div class="step">
+        <div class="num">3</div>
+        <div class="bd"><div class="t">Model picks the tool</div>
+          <div class="ex">chooses <code>compare_airports(LAX, SNA)</code> — the LLM plans, doesn't compute</div></div>
+        <div class="tg ai">AI</div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div class="bd"><div class="t">Compute the facts</div>
+          <div class="ex"><code>scoring.py</code> returns code-computed numbers from the snapshot</div></div>
+        <div class="tg code">CODE</div>
+      </div>
+      <div class="step">
+        <div class="num">5</div>
+        <div class="bd"><div class="t">Grounding check</div>
+          <div class="ex">every figure must trace to a tool — else the loop forces another call</div></div>
+        <div class="tg code">CODE</div>
+      </div>
+      <div class="step io">
+        <div class="num">6</div>
+        <div class="bd"><div class="t">Message out</div>
+          <div class="ex">plain-English answer, streamed &amp; remembered for follow-ups —
+          <span class="cyan">"Both Elevated: LAX 52.4, SNA 52.7"</span></div></div>
+        <div class="tg io">OUT</div>
+      </div>
     </div>
-  </div>
+    <p class="muted" style="font-size:.9rem; margin-top:14px">Steps 2–5 loop up to ~8 rounds for
+    multi-part questions. All data comes from a <strong>cached snapshot</strong> — fast, and the same
+    answer every run. One LLM seam → Gemini and Claude are swappable.</p>
+  </section>
 
-  <div class="warnbox"><strong>Known data gaps (documented, not faked):</strong> no public API for
-  <strong>gate/terminal counts</strong> or <strong>seat load-factor</strong> — the very things a build adds.
-  We proxy physical capacity with runways + slot-control + utilization. Delay data is <strong>3 sampled
-  months</strong> (Feb/Jul/Oct 2024) and <strong>domestic-only</strong>, so long-haul understates gateways
-  like SFO/JFK. All flagged in the agent's answers.</div>
-
-  <!-- 5. TOOLS -->
-  <h2><span class="n">5</span>Tools &amp; logic</h2>
-  <p class="sub">The agent has <strong>7 typed tools</strong>. Each returns code-computed facts; the model
-  only chooses which to call and how to phrase the result.</p>
-
-  <div class="toolgrid">
-    <div class="tool"><div class="nm">resolve_airport</div><div class="ds">name/city → IATA code(s); disambiguates "LA", "Portland"</div></div>
-    <div class="tool"><div class="nm">airport_report</div><div class="ds">full metric + EOS breakdown for one airport</div></div>
-    <div class="tool"><div class="nm">rank_airports</div><div class="ds">rank a region or the US by any pillar</div></div>
-    <div class="tool"><div class="nm">compare_airports</div><div class="ds">side-by-side on all metrics</div></div>
-    <div class="tool"><div class="nm">long_haul_profile</div><div class="ds">% long-haul, stage length, destinations</div></div>
-    <div class="tool"><div class="nm">unmet_demand</div><div class="ds">spilled-demand proxy + the "why"</div></div>
-    <div class="tool"><div class="nm">universe_summary</div><div class="ds">dataset scope, coverage, assumptions</div></div>
-  </div>
-
-  <div class="key"><b>The guardrail candidates miss:</b> a structural <b>grounding check</b>. If the model
-  ever writes a figure (a score, %, passenger count) <em>without</em> having called a data tool that turn,
-  the loop <b>refuses the answer and forces a tool call</b> — so it can never make up a number.
-  This is what makes an investment tool trustworthy.</div>
-
-  <!-- 6. AI vs CODE -->
-  <h2><span class="n">6</span>Where AI is used — and where it isn't</h2>
-  <p class="sub">The split is deliberate: <strong>AI for language, code for numbers.</strong></p>
-  <div class="split">
-    <div class="ai">
-      <h4>🤖 The LLM does</h4>
-      <ul class="clean">
-        <li>Understand the question &amp; ambiguity</li>
-        <li>Choose tools + arguments, sequence steps</li>
-        <li>Explain reasoning &amp; methodology</li>
-        <li>Carry the conversation (follow-ups)</li>
-        <li>Transcribe voice (Gemini)</li>
-      </ul>
+  <!-- 6 TOOLS -->
+  <section class="slide">
+    <div class="kick">The toolbox</div>
+    <h2>7 tools — in plain words</h2>
+    <p class="muted" style="margin:-.2em 0 0">The model can't touch the data directly. It gets every
+    fact by calling one of these — and each returns numbers computed in code.</p>
+    <div class="tools">
+      <div class="tl-t"><div class="nm">resolve_airport</div>
+        <div class="ds">Turns a name into the right airport — "LA" → LAX — and lists nearby ones.</div>
+        <span class="t2 an">find</span></div>
+      <div class="tl-t"><div class="nm">airport_report</div>
+        <div class="ds">The full picture for one airport: size, growth, how jammed, and its score.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">rank_airports</div>
+        <div class="ds">Best expansion bets in a region — or the whole US.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">compare_airports</div>
+        <div class="ds">Puts airports side by side on every metric.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">long_haul_profile</div>
+        <div class="ds">Share of flights that are long-haul (2,000+ miles).</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">unmet_demand</div>
+        <div class="ds">Flights an airport is turning away because it's full — and why.</div>
+        <span class="t2 an">analyze</span></div>
+      <div class="tl-t"><div class="nm">universe_summary</div>
+        <div class="ds">What data exists and what its limits are.</div>
+        <span class="t2 me">meta</span></div>
     </div>
-    <div class="code">
-      <h4>🧮 Code decides</h4>
-      <ul class="clean">
-        <li>Every score, percentile &amp; ranking</li>
-        <li>The choke gate &amp; all weights</li>
-        <li>Passenger, delay, long-haul figures</li>
-        <li>Name resolution &amp; region lookup</li>
-        <li>What counts as "grounded"</li>
-      </ul>
-    </div>
-  </div>
-  <p class="small muted">This satisfies "deterministic scoring, not only LLM output" and removes the failure
-  mode that would sink an investment tool: <strong>hallucinated statistics</strong>.</p>
+    <p class="muted" style="font-size:.9rem; margin-top:16px">One <span class="t2 an" style="margin:0">find</span>
+    tool, five <span class="t2 an" style="margin:0">analyze</span> tools, one
+    <span class="t2 me" style="margin:0">meta</span> tool — every number they return is computed in code,
+    never by the model.</p>
+  </section>
 
-  <!-- 7. HONEST -->
-  <h2><span class="n">7</span>Honest by design — assumptions, uncertainty, scope</h2>
-  <div class="warnbox"><strong>The one misread to avoid:</strong> EOS ranks <strong>where capacity is most
-  needed / productive</strong> — a <em>precondition</em> for profit. It is <strong>NOT an ROI model</strong>
-  (no construction cost, revenue, or airline fees). It's the <strong>shortlist for diligence, not the
-  diligence</strong>. Ask it "most profitable?" and it says exactly that.</div>
-  <div class="grid2">
-    <div class="card"><h4 style="margin-top:0">Assumptions</h4>
-      <ul class="clean">
-        <li>Long-haul ≥ 2,000 mi; "late" = departs &gt; 15 min behind</li>
-        <li>Demand = 2024 vs 2023 passengers (one year — the weakest pillar, noisy on small bases)</li>
-        <li>Slot-control list curated from FAA Level-3 (JFK/LGA/DCA/EWR)</li>
-      </ul>
+  <!-- 7 DATA SOURCES -->
+  <section class="slide">
+    <div class="kick">Where the numbers come from</div>
+    <h2>4 public data sources — in plain words</h2>
+    <p class="muted" style="margin:-.2em 0 0">Everything is pulled from open government &amp; aviation
+    data into one snapshot — so answers are fast and the same every time.</p>
+    <div class="cards two">
+      <div class="c"><h3>🗺️ OurAirports</h3>
+        <p class="muted">Where each airport is, and how many runways it has → the map, and how
+        <em>full</em> the runways run.</p></div>
+      <div class="c"><h3>👥 FAA passenger data</h3>
+        <p class="muted">How many people flew in 2024 vs 2023 → an airport's <em>size</em> and its
+        <em>growth</em>.</p></div>
+      <div class="c"><h3>⏱️ BTS flight records</h3>
+        <p class="muted">Delays, cancellations, and how far each flight goes → how <em>jammed</em> it is,
+        plus long-haul %.</p></div>
+      <div class="c"><h3>🏛️ FAA capacity rules</h3>
+        <p class="muted">Which airports the FAA legally caps flights at (JFK/LGA/DCA/EWR) → the strongest
+        "no room" signal.</p></div>
     </div>
-    <div class="card"><h4 style="margin-top:0">Scope &amp; uncertainty</h4>
-      <ul class="clean">
-        <li>US commercial airports only</li>
-        <li>Delays mix weather/ATC with real choke → never used alone</li>
-        <li>"Unmet demand" is a directional proxy, not a forecast</li>
-      </ul>
+    <p class="muted" style="font-size:.9rem; margin-top:14px">All <strong>public</strong>. Downloaded once
+    and joined into <code>data/airport_snapshot.parquet</code> — reproducible and demo-safe.</p>
+  </section>
+
+  <!-- 8 AI vs CODE -->
+  <section class="slide">
+    <div class="kick">Where AI is used — and where it isn't</div>
+    <h2>Language from AI · numbers from code</h2>
+    <div class="split">
+      <div class="a"><h4>🤖 The LLM</h4>
+        <ul><li>Understands &amp; disambiguates</li><li>Picks tools, sequences steps</li><li>Explains &amp; handles follow-ups</li></ul></div>
+      <div class="b"><h4>🧮 The code</h4>
+        <ul><li>Every score &amp; ranking</li><li>The choke gate &amp; weights</li><li>All passenger/delay figures</li></ul></div>
     </div>
-  </div>
+    <div class="warn"><b>The guardrail:</b> a structural <b>grounding check</b> — if the model writes a
+    figure without calling a data tool, the loop refuses it and forces the tool call. No hallucinated stats.</div>
+  </section>
 
-  <!-- 8. SIMPLICITY -->
-  <h2><span class="n">8</span>Simplicity &amp; scope discipline</h2>
-  <p class="sub">The brief said <em>"prioritize clarity and reasoning over completeness or polish."</em>
-  So the effort went where it counts.</p>
-  <div class="grid2">
-    <div class="card"><h4 style="margin-top:0">The graded core (read this)</h4>
-      <ul class="clean">
-        <li><code>scoring.py</code> — the choke-gated KPI, ~pure functions</li>
-        <li><code>tools.py</code> — 7 tools + the grounding guard</li>
-        <li><code>agent.py</code> — the LLM loop + thesis prompt</li>
-      </ul>
-      <p class="small muted" style="margin:6px 0 0">One idea, cleanly expressed. If you read one file,
-      read <code>scoring.py</code>.</p>
+  <!-- 8 SYSTEM PROMPT -->
+  <section class="slide">
+    <div class="kick">The system prompt</div>
+    <h2>The rules that make it trustworthy</h2>
+    <p class="muted" style="margin:-.2em 0 2px">The agent's instructions, in plain words — this is what
+    turns a chatbot into an analyst you can trust.</p>
+    <div class="prompthdr">▸ <b>SYSTEM PROMPT</b> — the agent's operating rules</div>
+    <div class="cards two" style="margin-top:0">
+      <div class="c" style="border-top-left-radius:0">
+        <h3>🔒 Stay honest</h3>
+        <ul class="rules">
+          <li><b>Never state a number from memory</b> — every figure comes from a tool.</li>
+          <li><b>No data? Say so.</b> Don't guess or fake capability.</li>
+          <li><b>It ranks capacity need, not profit</b> — no ROI, no investment advice.</li>
+          <li><b>Flag the soft spots</b> — low confidence, scope, "proxy not forecast".</li>
+        </ul>
+      </div>
+      <div class="c">
+        <h3>🎯 Reason like an analyst</h3>
+        <ul class="rules">
+          <li><b>Resolve fuzzy names first</b> — "LA" → LAX before answering.</li>
+          <li><b>Apply the thesis</b> — choke is required; explain which pillars drove a score.</li>
+          <li><b>Check "#1 / highest" claims</b> before agreeing — verify, don't assume.</li>
+          <li><b>Lead with the answer</b>, concise analyst voice, offer a follow-up.</li>
+        </ul>
+      </div>
     </div>
-    <div class="card"><h4 style="margin-top:0">Optional polish (on top)</h4>
-      <ul class="clean">
-        <li>Dark dashboard: map + live rankings</li>
-        <li>Floating chat with streaming replies</li>
-        <li>Voice input (the bonus)</li>
-      </ul>
-      <p class="small muted" style="margin:6px 0 0">Nice to have — but it's presentation over the same
-      tools, not the substance.</p>
+    <p class="muted" style="font-size:.88rem; margin-top:12px">Most of these are enforced in <em>code</em>
+    too (a grounding guard, name resolver, superlative check) — so they hold even when the model slips.</p>
+  </section>
+
+  <!-- 9 DATA / HONESTY -->
+  <section class="slide">
+    <div class="kick">Data &amp; completeness — honest, not hidden</div>
+    <h2>All public · gaps flagged, not faked</h2>
+    <div class="cards two">
+      <div class="c"><h4 style="margin:0 0 10px">Coverage of 478 airports</h4>
+        <div class="r"><div class="l">Passengers</div><div class="track"><div class="bar" style="width:99%;background:var(--blue)">471</div></div></div>
+        <div class="r"><div class="l">Delay data</div><div class="track"><div class="bar" style="width:69%;background:var(--indigo)">332</div></div></div>
+        <p class="muted" style="font-size:.86rem;margin:8px 0 0"><strong>31% lack delay data</strong> —
+        estimated &amp; flagged, verified they don't reach the top.</p></div>
+      <div class="c"><h4 style="margin:0 0 10px">Per-airport confidence</h4>
+        <div class="stack"><div class="seg" style="width:26%;background:var(--good)">126</div>
+          <div class="seg" style="width:50%;background:var(--warn)">235</div>
+          <div class="seg" style="width:24%;background:var(--orange)">117</div></div>
+        <div class="legend"><span><i class="sw" style="background:var(--good)"></i>High</span>
+          <span><i class="sw" style="background:var(--warn)"></i>Medium</span>
+          <span><i class="sw" style="background:var(--orange)"></i>Low</span></div>
+        <p class="muted" style="font-size:.86rem;margin:10px 0 0">Every row shows a ● trust dot.</p></div>
     </div>
-  </div>
+    <div class="warn"><b>The honest line:</b> EOS ranks <b>where capacity is most needed</b> — a precondition
+    for profit, <b>not an ROI model</b> (no capex/revenue). Shortlist for diligence, not the diligence.</div>
+  </section>
 
-  <!-- 9. TRADEOFFS -->
-  <h2><span class="n">9</span>Key tradeoffs (what I'd do next)</h2>
-  <div class="tblwrap">
-  <table>
-    <tr><th>Choice</th><th>Why</th><th>Cost / next step</th></tr>
-    <tr><td>Cached snapshot from public data</td><td>fast, reproducible, demo-safe</td><td>data is CY2024; refresh on a schedule (live APIs are a documented extension)</td></tr>
-    <tr><td>Choke as a <em>gate</em>, not a weight</td><td>encodes the thesis by construction</td><td>0.60 floor is a judgment call (tunable in config)</td></tr>
-    <tr><td>Demand = 1-year growth</td><td>simplest available signal</td><td>noisy; a multi-year trend / FAA TAF forecast is sturdier — <strong>first upgrade</strong></td></tr>
-    <tr><td>Median-estimate missing choke</td><td>keeps all airports scoreable</td><td>slightly generous; could exclude or estimate low</td></tr>
-    <tr><td>Capacity via runways + slots</td><td>no public gate/seat data exists</td><td>add load-factor / gate counts if sourced</td></tr>
-  </table>
-  </div>
+  <!-- 8 IT WORKS -->
+  <section class="slide">
+    <div class="kick">Does it hold up?</div>
+    <h2>Grounded, tested, and it behaves</h2>
+    <div class="cards two">
+      <div class="c"><h3 style="margin:.1em 0 .4em">Face-valid results</h3>
+        <p class="muted">Top 5: <span class="cyan">CLT 88 · DFW 83 · PHX 82 · SAN 81 · DEN 81</span> —
+        all choked big hubs. The gate demotes big-but-empty (Maui 37→27). All 4 brief questions answered.</p></div>
+      <div class="c"><h3 style="margin:.1em 0 .4em">Hardened</h3>
+        <ul style="margin:0"><li>No fabricated numbers (grounding guard)</li>
+          <li>Corrects false premises &amp; superlatives</li>
+          <li>Reproducible — same answer every run</li></ul></div>
+    </div>
+    <p style="margin-top:16px">Stress-tested with <strong>~90 adversarial prompts</strong> — jailbreaks
+    refused, out-of-scope declined, ambiguity resolved, memory works. Invariants locked by unit tests.</p>
+  </section>
 
-  <p class="sub" style="margin-top:24px">Validation, honestly: a "best expansion" ranking has no ground
-  truth, so I check it <strong>behaves</strong> — the top is all choked big hubs, the gate demotes
-  big-but-unchoked airports (Maui 37→27), and unit tests lock those invariants so a future weight tweak
-  can't silently break the thesis.</p>
+  <!-- 9 TRADEOFFS -->
+  <section class="slide">
+    <div class="kick">Tradeoffs &amp; what's next</div>
+    <h2>Honest about the edges</h2>
+    <ul>
+      <li><b>Demand = one year of growth</b> — noisy; a multi-year trend / FAA forecast is the <em>first upgrade</em>.</li>
+      <li><b>No gate/seat data exists publicly</b> — capacity proxied by runways + slot-control + utilization.</li>
+      <li><b>Delays = 3 sampled months, domestic-only</b> — understates international gateways.</li>
+      <li><b>Snapshot is CY2024</b> — refresh on a schedule for production.</li>
+    </ul>
+    <p class="muted" style="margin-top:12px">All weights + the gate floor live in <code>config.py</code> —
+    tunable, not buried.</p>
+  </section>
 
-  <div class="disc">
-    <strong>Decision-support, not investment advice.</strong> Every figure is code-computed from public
-    FAA · BTS · OurAirports data; the AI plans, narrates and cites — it never fabricates numbers.<br>
-    Python · Streamlit · Gemini / Claude (tool-use) · pandas — <span class="cyan">Airport Investment Intelligence Agent</span>
-  </div>
+  <!-- 10 CLOSE -->
+  <section class="slide">
+    <div class="kick">In one line</div>
+    <h1><span class="g">Choke-gated</span> scoring,<br>a grounded agent.</h1>
+    <p class="lead">Deterministic KPI that encodes the investment thesis · an AI that explains but never
+    invents · honest about what it doesn't know.</p>
+    <p style="margin-top:18px"><span class="pill">read one file → src/scoring.py</span></p>
+    <p class="muted" style="margin-top:20px">Decision-support, not investment advice. Python · Streamlit ·
+    Gemini/Claude · pandas.</p>
+  </section>
 
 </div>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span> AVIA · Airport Investment Intelligence</div>
+  <div class="dots" id="dots"></div>
+  <div class="nav">
+    <button id="prev" aria-label="Previous">‹</button>
+    <span class="count" id="count">1 / 13</span>
+    <button id="next" aria-label="Next">›</button>
+  </div>
+</div>
+<div class="hint">← → to navigate · F for full screen</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots');
+  const count=document.getElementById('count');
+  let i=0;
+  slides.forEach((_,n)=>{const d=document.createElement('i'); d.onclick=()=>go(n); dotsWrap.appendChild(d);});
+  const dots=[...dotsWrap.children];
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    count.textContent=(i+1)+' / '+slides.length;
+    location.hash=i+1;
+  }
+  document.getElementById('next').onclick=()=>go(i+1);
+  document.getElementById('prev').onclick=()=>go(i-1);
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight',' ','Enter','PageDown'].includes(e.key)){e.preventDefault();go(i+1);}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(i-1);}
+    else if(e.key==='Home'){go(0);} else if(e.key==='End'){go(slides.length-1);}
+    else if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+  });
+  const start=parseInt(location.hash.replace('#',''))||1;
+  go(start-1);
+</script>
 </body>
 </html>

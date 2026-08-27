@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airport Investment Intelligence Agent — Design</title>
+<style>
+  :root{
+    --bg:#0b1524; --panel:#0f1e33; --panel2:#122239; --topbar:#0e1c30;
+    --border:#1c3350; --border2:#23405f; --text:#e6edf5; --text2:#cbd8e8;
+    --muted:#7f96b3; --cyan:#22d3ee; --blue:#3b82f6; --indigo:#818cf8; --purple:#c084fc;
+    --good:#22c55e; --warn:#f59e0b; --orange:#f97316;
+    --chip:#16304c; --code:#0d1c30;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(34,211,238,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1000px; margin:0 auto; padding:0 20px 80px;}
+
+  /* top bar (mirrors the app) */
+  .topbar{position:sticky; top:0; z-index:20; background:rgba(14,28,48,.85);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:11px; padding:12px 20px;}
+  .topbar .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 12px var(--cyan);}
+  .topbar b{font-weight:700; letter-spacing:.2px}
+  .topbar .tag{margin-left:auto; color:var(--muted); font-size:.8rem;
+    border:1px solid var(--border2); border-radius:20px; padding:3px 11px;}
+
+  /* hero */
+  .hero{padding:52px 0 26px; border-bottom:1px solid var(--border); margin-bottom:34px;}
+  .hero .kicker{color:var(--cyan); font-size:.8rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.14em;}
+  .hero h1{font-size:2.35rem; line-height:1.15; margin:.35em 0 .3em; letter-spacing:-.5px;}
+  .hero h1 span{background:linear-gradient(120deg,var(--cyan),var(--purple));
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .hero p{color:var(--text2); font-size:1.08rem; max-width:70ch; margin:.2em 0;}
+  .hero .lead{color:var(--muted); font-size:.95rem; margin-top:14px;}
+
+  h2{font-size:1.5rem; margin:52px 0 6px; letter-spacing:-.3px; scroll-margin-top:70px;}
+  h2 .n{color:var(--cyan); font-variant-numeric:tabular-nums; margin-right:10px; font-weight:700;}
+  h3{font-size:1.05rem; margin:26px 0 8px; color:var(--text);}
+  .sub{color:var(--muted); margin:.2em 0 18px; max-width:78ch;}
+  p{color:var(--text2)} strong{color:var(--text)}
+  a{color:var(--cyan); text-decoration:none} a:hover{text-decoration:underline}
+
+  .card{background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; padding:20px 22px; margin:16px 0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+
+  .pill{display:inline-block; background:var(--code); border:1px solid var(--border2);
+    border-radius:8px; padding:2px 8px; font:.86rem/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:var(--text2);}
+  code{background:var(--code); border:1px solid var(--border2); border-radius:6px;
+    padding:1px 6px; font:.85em ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5e6f3;}
+  .cyan{color:var(--cyan)} .muted{color:var(--muted)} .small{font-size:.86rem}
+
+  .badge{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:700;
+    border-radius:20px; padding:3px 10px;}
+  .b-good{background:rgba(34,197,94,.14); color:#4ade80}
+  .b-warn{background:rgba(245,158,11,.15); color:#fbbf24}
+  .b-low{background:rgba(249,115,22,.15); color:#fb923c}
+
+  /* the "so what" callout */
+  .key{border-left:3px solid var(--cyan); background:linear-gradient(135deg,#123a4d,#0f2740);
+    border-radius:0 12px 12px 0; padding:14px 18px; margin:18px 0;}
+  .key b{color:var(--cyan)}
+  .warnbox{border-left:3px solid var(--orange); background:rgba(249,115,22,.06);
+    border-radius:0 12px 12px 0; padding:14px 18px; margin:18px 0;}
+
+  /* flow diagram */
+  .flow{display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; margin:8px 0}
+  .node{flex:1 1 150px; background:var(--panel2); border:1px solid var(--border2);
+    border-radius:12px; padding:13px 14px; min-width:140px;}
+  .node .t{font-weight:700; font-size:.92rem; margin-bottom:3px}
+  .node .d{color:var(--muted); font-size:.8rem; line-height:1.45}
+  .node.accent{border-color:var(--cyan); box-shadow:0 0 0 1px rgba(34,211,238,.25) inset}
+  .arrow{display:flex; align-items:center; color:var(--cyan); font-size:1.4rem; font-weight:700}
+  @media(max-width:720px){.arrow{transform:rotate(90deg); justify-content:center; width:100%}}
+
+  /* bars */
+  .bar{height:26px; border-radius:7px; display:flex; align-items:center; padding:0 10px;
+    color:#04121f; font-weight:800; font-size:.8rem; white-space:nowrap; min-width:34px;}
+  .track{background:var(--code); border:1px solid var(--border); border-radius:7px; overflow:hidden;}
+  .row{display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:center; margin:9px 0}
+  .row .lab{color:var(--text2); font-size:.9rem; text-align:right; font-weight:600}
+  .stack{display:flex; height:30px; border-radius:8px; overflow:hidden; border:1px solid var(--border)}
+  .seg{display:flex; align-items:center; justify-content:center; color:#04121f;
+    font-weight:800; font-size:.78rem}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:.82rem}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* tables */
+  table{width:100%; border-collapse:collapse; margin:6px 0; font-size:.9rem}
+  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--border)}
+  th{color:var(--muted); font-weight:700; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em}
+  td{color:var(--text2)} tr:last-child td{border-bottom:none}
+  .tblwrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px}
+
+  ul.clean{list-style:none; padding:0; margin:8px 0}
+  ul.clean li{padding:7px 0 7px 26px; position:relative; color:var(--text2); border-bottom:1px solid var(--border)}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li:before{content:"→"; position:absolute; left:2px; color:var(--cyan); font-weight:700}
+
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border); border-radius:12px; overflow:hidden}
+  .split>div{padding:18px 20px}
+  .split .ai{background:linear-gradient(135deg,#141a33,#0f1830)}
+  .split .code{background:var(--panel2)}
+  .split h4{margin:0 0 10px; font-size:.98rem}
+  @media(max-width:720px){.split{grid-template-columns:1fr}}
+
+  .toolgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+  @media(max-width:720px){.toolgrid{grid-template-columns:1fr}}
+  .tool{background:var(--panel2); border:1px solid var(--border); border-radius:11px; padding:12px 14px}
+  .tool .nm{font:.82rem ui-monospace,Menlo,monospace; color:#a5e6f3; font-weight:700}
+  .tool .ds{color:var(--muted); font-size:.82rem; margin-top:3px; line-height:1.45}
+
+  .disc{color:var(--muted); font-size:.82rem; text-align:center; border-top:1px solid var(--border);
+    margin-top:50px; padding-top:22px}
+  .kpi{display:flex; gap:22px; flex-wrap:wrap; margin:6px 0}
+  .kpi div{flex:1 1 120px}
+  .kpi .v{font-size:1.7rem; font-weight:800; color:var(--text); letter-spacing:-.5px}
+  .kpi .v.cy{background:linear-gradient(120deg,var(--cyan),var(--purple));
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .kpi .k{color:var(--muted); font-size:.8rem}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="dot"></span><b>AVIA · Airport Investment Intelligence</b>
+  <span class="tag">Design &amp; Architecture</span>
+</div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="kicker">FDE Take-home · Design Document</div>
+    <h1>Where should a fund<br><span>build airport capacity?</span></h1>
+    <p>A conversational agent that helps an analyst find the <strong>US airports where a
+    terminal or runway build pays off most</strong> — airports that are big, growing,
+    <em>and</em> already jammed, so new capacity turns straight into more flights and passengers.</p>
+    <div class="kpi">
+      <div><div class="v cy">478</div><div class="k">US airports scored</div></div>
+      <div><div class="v">7</div><div class="k">agent tools</div></div>
+      <div><div class="v">4</div><div class="k">public data sources</div></div>
+      <div><div class="v">0</div><div class="k">numbers the LLM invents</div></div>
+    </div>
+    <p class="lead">It answers questions like <span class="cyan">"Which New England airports are
+    strong expansion candidates?"</span> · <span class="cyan">"Compare LA and Santa Ana congestion"</span>
+    · <span class="cyan">"% long-haul out of Anchorage?"</span> · <span class="cyan">"Unmet demand at
+    SFO, and why?"</span></p>
+  </div>
+
+  <!-- 1. THE IDEA -->
+  <h2><span class="n">1</span>The idea in one line</h2>
+  <p class="sub">The business makes money by <strong>building physical capacity</strong> and earning
+  fees + passenger revenue on the new traffic. That only pays off at a <strong>choke point</strong> —
+  an airport that is full and turning flights away. A good target needs <strong>three things at once</strong>:</p>
+
+  <div class="grid3">
+    <div class="card" style="text-align:center">
+      <div class="badge b-good" style="margin-bottom:8px">the differentiator</div>
+      <h3 style="margin:.2em 0">🚦 Choke</h3>
+      <p class="small muted">It's jammed — chronic delays, runways near 100% use, or the FAA legally
+      caps flights. <strong style="color:var(--text)">If it has room, no build is needed.</strong></p>
+    </div>
+    <div class="card" style="text-align:center">
+      <h3 style="margin:.2em 0">📈 Demand</h3>
+      <p class="small muted">Traffic is growing, so the new capacity will actually get used.</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <h3 style="margin:.2em 0">🏗️ Scale</h3>
+      <p class="small muted">Big enough that a hundreds-of-millions build is worth it.</p>
+    </div>
+  </div>
+
+  <div class="key"><b>Why most people get this wrong:</b> the obvious move is to rank airports by
+  size or growth. But a huge, fast-growing airport with <em>spare room</em> doesn't need a build —
+  it just absorbs the growth. <b>Choke is what makes capacity profitable</b>, so we build the whole
+  score around it.</div>
+
+  <!-- 2. THE SCORE -->
+  <h2><span class="n">2</span>The score — how it works (in plain English)</h2>
+  <p class="sub">Every airport gets one number from <strong>0–100</strong>: the
+  <strong>Expansion Opportunity Score (EOS)</strong>. Higher = a better place to build. It blends the
+  three ingredients, then multiplies by a <strong>choke gate</strong>.</p>
+
+  <div class="card">
+    <p style="margin-top:0"><span class="pill">EOS = ( Choke&nbsp;45% + Demand&nbsp;30% + Scale&nbsp;25% ) × Choke-gate</span></p>
+    <p class="small muted">Each ingredient is a <strong>national percentile</strong> (0–100) — how an
+    airport ranks against every other. Percentiles are used because they're unit-free, robust to
+    outliers, and easy to read.</p>
+
+    <div class="row"><div class="lab">Choke · 45%</div>
+      <div class="track"><div class="bar" style="width:45%;background:var(--cyan)">45%</div></div></div>
+    <div class="row"><div class="lab">Demand · 30%</div>
+      <div class="track"><div class="bar" style="width:30%;background:var(--blue)">30%</div></div></div>
+    <div class="row"><div class="lab">Scale · 25%</div>
+      <div class="track"><div class="bar" style="width:25%;background:var(--indigo)">25%</div></div></div>
+  </div>
+
+  <h3>The choke gate is the whole trick</h3>
+  <p class="sub"><span class="pill">gate = 0.60 + 0.40 × choke</span>
+  <span class="small muted">(choke scaled 0→1, i.e. <code>choke_pct ÷ 100</code>)</span> &nbsp; The gate
+  <strong>shrinks the score when an airport isn't jammed</strong>. So an airport can't ride scale + growth
+  to the top — it needs a real bottleneck. The thesis is baked into the math, not left to the LLM.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4 style="margin:0 0 4px">✅ Charlotte (CLT) — jammed &amp; big</h4>
+      <p class="small muted" style="margin:0 0 12px">choke 98th pct → gate 0.99 (barely touched)</p>
+      <div class="row"><div class="lab">Base</div>
+        <div class="track"><div class="bar" style="width:88.7%;background:#2a4a63">88.7</div></div></div>
+      <div class="row"><div class="lab">× gate 0.99</div>
+        <div class="track"><div class="bar" style="width:88.2%;background:linear-gradient(90deg,var(--cyan),var(--blue))">EOS 88.2</div></div></div>
+    </div>
+    <div class="card">
+      <h4 style="margin:0 0 4px">❌ Maui (OGG) — big, but has room</h4>
+      <p class="small muted" style="margin:0 0 12px">choke 28th pct → gate 0.71 (pulls it down hard)</p>
+      <div class="row"><div class="lab">Base</div>
+        <div class="track"><div class="bar" style="width:37.4%;background:#2a4a63">37.4</div></div></div>
+      <div class="row"><div class="lab">× gate 0.71</div>
+        <div class="track"><div class="bar" style="width:26.6%;background:linear-gradient(90deg,var(--orange),#b45309)">EOS 26.6</div></div></div>
+    </div>
+  </div>
+  <div class="key"><b>Read it:</b> a plain weighted sum would score Maui ~37 and float it up the list
+  on its size. The gate drags it to <b>27</b> — correctly saying "growing tourism, but it isn't choked,
+  so a build won't pay." That single design choice is what makes the ranking match the investment thesis.</div>
+
+  <p class="sub">Every score is <strong>fully decomposable</strong> — the agent shows each ingredient's
+  percentile, weight and contribution, so it can <em>explain</em> a ranking instead of asserting it.
+  Top 5 nationally today: <span class="cyan">CLT 88 · DFW 83 · PHX 82 · SAN 81 · DEN 81</span> —
+  all big, choked hubs. ✔️ face-valid.</p>
+
+  <!-- 3. ARCHITECTURE -->
+  <h2><span class="n">3</span>Architecture &amp; flow</h2>
+  <p class="sub">Three clean layers. The LLM <strong>plans and explains</strong>; <strong>code decides
+  every number</strong>; all analytics read a <strong>cached snapshot</strong> built once from public
+  data — fast, and the same answer every run.</p>
+
+  <div class="card">
+    <div class="flow">
+      <div class="node"><div class="t">🗣️ You (chat / voice)</div><div class="d">a question in plain English</div></div>
+      <div class="arrow">▸</div>
+      <div class="node accent"><div class="t">🤖 Agent loop</div><div class="d">Gemini / Claude picks tools, runs ≤8 rounds, narrates</div></div>
+      <div class="arrow">▸</div>
+      <div class="node"><div class="t">🧮 Deterministic engine</div><div class="d">scoring.py computes every number from the snapshot</div></div>
+      <div class="arrow">▸</div>
+      <div class="node accent"><div class="t">✅ Grounded answer</div><div class="d">every figure traced to a tool — no invented stats</div></div>
+    </div>
+    <p class="small muted" style="margin-bottom:0">The heavy data sits in a <code>data/airport_snapshot.parquet</code>
+    built once, offline, from the public sources — so the demo is fast and gives the same answer every time.
+    The LLM sits behind one seam (<code>llm.py</code>), so Gemini and Claude are interchangeable.</p>
+  </div>
+
+  <h3>What happens on one question</h3>
+  <ul class="clean">
+    <li><strong>Understand &amp; resolve</strong> — "LA" → <code>resolve_airport</code> → LAX (and it lists
+    SNA/BUR siblings). Ambiguous names like "Portland" are disambiguated, not guessed.</li>
+    <li><strong>Pick tools</strong> — the model chooses <code>rank_airports</code>, <code>compare_airports</code>,
+    <code>airport_report</code>… and can call several at once.</li>
+    <li><strong>Compute in code</strong> — the tool returns code-computed facts (never the model's memory).</li>
+    <li><strong>Explain</strong> — the model turns the numbers into an analyst-style answer with the caveats
+    that matter, and handles follow-ups (it remembers the conversation).</li>
+  </ul>
+
+  <!-- 4. DATA -->
+  <h2><span class="n">4</span>Data &amp; completeness (the honest part)</h2>
+  <p class="sub">All sources are <strong>public</strong>. Where data is thin or missing, the tool
+  <strong>says so</strong> rather than hiding it — that honesty is a feature, not an apology.</p>
+
+  <div class="tblwrap">
+  <table>
+    <tr><th>Source</th><th>Type</th><th>Gives us</th><th>Feeds</th></tr>
+    <tr><td>OurAirports</td><td>public CSV</td><td>location, region, runways</td><td>map · utilization</td></tr>
+    <tr><td>FAA ACAIS (CY2024)</td><td>public file</td><td>passengers 2024 vs 2023</td><td><span class="cyan">Scale + Demand</span></td></tr>
+    <tr><td>BTS On-Time (2024)</td><td>public file</td><td>delays, cancellations, route distance</td><td><span class="cyan">Choke</span> · long-haul</td></tr>
+    <tr><td>FAA capacity designations</td><td>curated (Level-3, Core-30)</td><td>slot-controlled + Core-30 flags</td><td><span class="cyan">Choke</span> bonus</td></tr>
+  </table>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h4 style="margin:0 0 12px">Coverage — of 478 airports</h4>
+      <div class="row"><div class="lab">Scored</div>
+        <div class="track"><div class="bar" style="width:100%;background:var(--cyan)">478 · 100%</div></div></div>
+      <div class="row"><div class="lab">Passenger data</div>
+        <div class="track"><div class="bar" style="width:98.5%;background:var(--blue)">471 · 99%</div></div></div>
+      <div class="row"><div class="lab">Delay data</div>
+        <div class="track"><div class="bar" style="width:69.5%;background:var(--indigo)">332 · 69%</div></div></div>
+      <p class="small muted" style="margin:10px 0 0"><strong>146 airports (31%) have no delay data</strong>
+      — BTS only covers larger carriers. Their choke is estimated and flagged; verified they don't sneak
+      into the top ranks.</p>
+    </div>
+    <div class="card">
+      <h4 style="margin:0 0 12px">Per-airport confidence</h4>
+      <div class="stack">
+        <div class="seg" style="width:26.4%;background:var(--good)">High 126</div>
+        <div class="seg" style="width:49.2%;background:var(--warn)">Medium 235</div>
+        <div class="seg" style="width:24.5%;background:var(--orange)">Low 117</div>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--good)"></i>full data, big sample</span>
+        <span><i class="sw" style="background:var(--warn)"></i>some estimated / smaller</span>
+        <span><i class="sw" style="background:var(--orange)"></i>thin / tiny base</span>
+      </div>
+      <p class="small muted" style="margin:12px 0 0">Every row carries a <strong>●</strong> dot so the
+      analyst knows how much to trust it. Rankings apply a <strong>500k-passenger floor</strong> so a
+      tiny airport's volatile "+300%" can't top the list.</p>
+    </div>
+  </div>
+
+  <div class="warnbox"><strong>Known data gaps (documented, not faked):</strong> no public API for
+  <strong>gate/terminal counts</strong> or <strong>seat load-factor</strong> — the very things a build adds.
+  We proxy physical capacity with runways + slot-control + utilization. Delay data is <strong>3 sampled
+  months</strong> (Feb/Jul/Oct 2024) and <strong>domestic-only</strong>, so long-haul understates gateways
+  like SFO/JFK. All flagged in the agent's answers.</div>
+
+  <!-- 5. TOOLS -->
+  <h2><span class="n">5</span>Tools &amp; logic</h2>
+  <p class="sub">The agent has <strong>7 typed tools</strong>. Each returns code-computed facts; the model
+  only chooses which to call and how to phrase the result.</p>
+
+  <div class="toolgrid">
+    <div class="tool"><div class="nm">resolve_airport</div><div class="ds">name/city → IATA code(s); disambiguates "LA", "Portland"</div></div>
+    <div class="tool"><div class="nm">airport_report</div><div class="ds">full metric + EOS breakdown for one airport</div></div>
+    <div class="tool"><div class="nm">rank_airports</div><div class="ds">rank a region or the US by any pillar</div></div>
+    <div class="tool"><div class="nm">compare_airports</div><div class="ds">side-by-side on all metrics</div></div>
+    <div class="tool"><div class="nm">long_haul_profile</div><div class="ds">% long-haul, stage length, destinations</div></div>
+    <div class="tool"><div class="nm">unmet_demand</div><div class="ds">spilled-demand proxy + the "why"</div></div>
+    <div class="tool"><div class="nm">universe_summary</div><div class="ds">dataset scope, coverage, assumptions</div></div>
+  </div>
+
+  <div class="key"><b>The guardrail candidates miss:</b> a structural <b>grounding check</b>. If the model
+  ever writes a figure (a score, %, passenger count) <em>without</em> having called a data tool that turn,
+  the loop <b>refuses the answer and forces a tool call</b> — so it can never make up a number.
+  This is what makes an investment tool trustworthy.</div>
+
+  <!-- 6. AI vs CODE -->
+  <h2><span class="n">6</span>Where AI is used — and where it isn't</h2>
+  <p class="sub">The split is deliberate: <strong>AI for language, code for numbers.</strong></p>
+  <div class="split">
+    <div class="ai">
+      <h4>🤖 The LLM does</h4>
+      <ul class="clean">
+        <li>Understand the question &amp; ambiguity</li>
+        <li>Choose tools + arguments, sequence steps</li>
+        <li>Explain reasoning &amp; methodology</li>
+        <li>Carry the conversation (follow-ups)</li>
+        <li>Transcribe voice (Gemini)</li>
+      </ul>
+    </div>
+    <div class="code">
+      <h4>🧮 Code decides</h4>
+      <ul class="clean">
+        <li>Every score, percentile &amp; ranking</li>
+        <li>The choke gate &amp; all weights</li>
+        <li>Passenger, delay, long-haul figures</li>
+        <li>Name resolution &amp; region lookup</li>
+        <li>What counts as "grounded"</li>
+      </ul>
+    </div>
+  </div>
+  <p class="small muted">This satisfies "deterministic scoring, not only LLM output" and removes the failure
+  mode that would sink an investment tool: <strong>hallucinated statistics</strong>.</p>
+
+  <!-- 7. HONEST -->
+  <h2><span class="n">7</span>Honest by design — assumptions, uncertainty, scope</h2>
+  <div class="warnbox"><strong>The one misread to avoid:</strong> EOS ranks <strong>where capacity is most
+  needed / productive</strong> — a <em>precondition</em> for profit. It is <strong>NOT an ROI model</strong>
+  (no construction cost, revenue, or airline fees). It's the <strong>shortlist for diligence, not the
+  diligence</strong>. Ask it "most profitable?" and it says exactly that.</div>
+  <div class="grid2">
+    <div class="card"><h4 style="margin-top:0">Assumptions</h4>
+      <ul class="clean">
+        <li>Long-haul ≥ 2,000 mi; "late" = departs &gt; 15 min behind</li>
+        <li>Demand = 2024 vs 2023 passengers (one year — the weakest pillar, noisy on small bases)</li>
+        <li>Slot-control list curated from FAA Level-3 (JFK/LGA/DCA/EWR)</li>
+      </ul>
+    </div>
+    <div class="card"><h4 style="margin-top:0">Scope &amp; uncertainty</h4>
+      <ul class="clean">
+        <li>US commercial airports only</li>
+        <li>Delays mix weather/ATC with real choke → never used alone</li>
+        <li>"Unmet demand" is a directional proxy, not a forecast</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 8. SIMPLICITY -->
+  <h2><span class="n">8</span>Simplicity &amp; scope discipline</h2>
+  <p class="sub">The brief said <em>"prioritize clarity and reasoning over completeness or polish."</em>
+  So the effort went where it counts.</p>
+  <div class="grid2">
+    <div class="card"><h4 style="margin-top:0">The graded core (read this)</h4>
+      <ul class="clean">
+        <li><code>scoring.py</code> — the choke-gated KPI, ~pure functions</li>
+        <li><code>tools.py</code> — 7 tools + the grounding guard</li>
+        <li><code>agent.py</code> — the LLM loop + thesis prompt</li>
+      </ul>
+      <p class="small muted" style="margin:6px 0 0">One idea, cleanly expressed. If you read one file,
+      read <code>scoring.py</code>.</p>
+    </div>
+    <div class="card"><h4 style="margin-top:0">Optional polish (on top)</h4>
+      <ul class="clean">
+        <li>Dark dashboard: map + live rankings</li>
+        <li>Floating chat with streaming replies</li>
+        <li>Voice input (the bonus)</li>
+      </ul>
+      <p class="small muted" style="margin:6px 0 0">Nice to have — but it's presentation over the same
+      tools, not the substance.</p>
+    </div>
+  </div>
+
+  <!-- 9. TRADEOFFS -->
+  <h2><span class="n">9</span>Key tradeoffs (what I'd do next)</h2>
+  <div class="tblwrap">
+  <table>
+    <tr><th>Choice</th><th>Why</th><th>Cost / next step</th></tr>
+    <tr><td>Cached snapshot from public data</td><td>fast, reproducible, demo-safe</td><td>data is CY2024; refresh on a schedule (live APIs are a documented extension)</td></tr>
+    <tr><td>Choke as a <em>gate</em>, not a weight</td><td>encodes the thesis by construction</td><td>0.60 floor is a judgment call (tunable in config)</td></tr>
+    <tr><td>Demand = 1-year growth</td><td>simplest available signal</td><td>noisy; a multi-year trend / FAA TAF forecast is sturdier — <strong>first upgrade</strong></td></tr>
+    <tr><td>Median-estimate missing choke</td><td>keeps all airports scoreable</td><td>slightly generous; could exclude or estimate low</td></tr>
+    <tr><td>Capacity via runways + slots</td><td>no public gate/seat data exists</td><td>add load-factor / gate counts if sourced</td></tr>
+  </table>
+  </div>
+
+  <p class="sub" style="margin-top:24px">Validation, honestly: a "best expansion" ranking has no ground
+  truth, so I check it <strong>behaves</strong> — the top is all choked big hubs, the gate demotes
+  big-but-unchoked airports (Maui 37→27), and unit tests lock those invariants so a future weight tweak
+  can't silently break the thesis.</p>
+
+  <div class="disc">
+    <strong>Decision-support, not investment advice.</strong> Every figure is code-computed from public
+    FAA · BTS · OurAirports data; the AI plans, narrates and cites — it never fabricates numbers.<br>
+    Python · Streamlit · Gemini / Claude (tool-use) · pandas — <span class="cyan">Airport Investment Intelligence Agent</span>
+  </div>
+
+</div>
+</body>
+</html>
