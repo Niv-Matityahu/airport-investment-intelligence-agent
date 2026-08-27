@@ -23,7 +23,7 @@
 
   .deck{position:fixed; inset:0}
   .slide{position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
-    padding:6vh 8vw; opacity:0; transform:translateY(14px) scale(.995); pointer-events:none;
+    padding:6vh 8vw 92px; opacity:0; transform:translateY(14px) scale(.995); pointer-events:none;
     transition:opacity .38s ease, transform .38s ease; overflow-y:auto;}
   .slide.active{opacity:1; transform:none; pointer-events:auto}
   .kick{color:var(--cyan); font-size:.82rem; font-weight:700; text-transform:uppercase;
@@ -98,8 +98,8 @@
   .warn b{color:#fb923c}
 
   /* nav chrome */
-  .bar{position:fixed; left:0; right:0; bottom:0; display:flex; align-items:center; gap:14px;
-    padding:12px 22px; background:linear-gradient(0deg,rgba(11,21,36,.9),transparent);
+  .navbar{position:fixed; left:0; right:0; bottom:0; display:flex; align-items:center; gap:14px;
+    padding:12px 22px; background:linear-gradient(0deg,rgba(11,21,36,.95),rgba(11,21,36,.6));
     z-index:30}
   .brand{display:flex; align-items:center; gap:9px; color:var(--muted); font-size:.82rem}
   .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan); box-shadow:0 0 10px var(--cyan)}
@@ -278,7 +278,7 @@
 
 </div>
 
-<div class="bar">
+<div class="navbar">
   <div class="brand"><span class="dot"></span> AVIA · Airport Investment Intelligence</div>
   <div class="dots" id="dots"></div>
   <div class="nav">
