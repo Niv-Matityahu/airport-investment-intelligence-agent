@@ -5,7 +5,11 @@ where terminal/runway expansion will be most profitable** — ranking airports
 where demand is large and growing but capacity is already strained, so new
 capacity converts into more served flights and passengers.
 
-Built for the Forward Deployed Engineer exercise. **Design write-up:**
+**🔗 Live app (no install needed):**
+<https://airport-investment-intelligence-agent.streamlit.app/> — a public, always-on
+hosted version.
+
+**Design write-up:**
 [the deck](docs/Airport%20Investment%20Intelligence%20Agent.html) (11 slides — arrow keys, press F) ·
 [`docs/design.html`](docs/design.html) (visual one-pager) ·
 [`docs/DESIGN.md`](docs/DESIGN.md) (plain text). All open in a browser.
@@ -32,15 +36,17 @@ It answers questions like:
   deliverable is the scoring + grounded agent; the dark dashboard (national
   opportunity map + live rankings) is optional presentation polish on the same
   tools.
-- **Hybrid public data** — cached snapshot from FAA + BTS + OurAirports, plus
-  live OpenSky (real-time traffic) and BTS T-100 REST-API tools.
+- **Public data** — a cached snapshot built once from **FAA + BTS + OurAirports**
+  (`data/build_dataset.py`), so the app is fast and reproducible. *(Two live REST
+  APIs — OpenSky + BTS T-100 — are implemented in `src/live_api.py` but kept out
+  of the MVP tool set for simplicity; re-enabling is a one-line change.)*
 - **Honest about itself** — a persistent *Methodology · assumptions · scope ·
   uncertainty* panel + a "decision-support, not investment advice" disclaimer,
   per-airport **data-confidence** dots, and proxies (e.g. "unmet demand")
   labelled as such — in both the UI and the agent's answers.
-- **Trustworthy numbers** — every figure is code-computed by `scoring.py` /
-  the live APIs; the system prompt forbids stating any statistic from memory, so
-  the LLM never hallucinates a figure.
+- **Trustworthy numbers** — every figure is code-computed by `scoring.py`; a
+  structural **grounding guard** blocks any answer that states a figure without a
+  tool call, so the LLM never hallucinates a statistic.
 
 ## Quick start
 
@@ -83,8 +89,8 @@ pytest tests/ -v      # deterministic-engine unit tests (no key, no network)
 data/build_dataset.py   offline build: download → join → derive → parquet snapshot
 src/scoring.py          EOS + percentiles, unmet-demand proxy, long-haul, ranking  ← the graded core
 src/data_layer.py       snapshot load, airport-name resolver, region lookup
-src/live_api.py         OpenSky real-time traffic (best-effort)
-src/tools.py            agent tool schemas + deterministic dispatch
+src/live_api.py         OpenSky + BTS T-100 live APIs (dormant — not in MVP tools)
+src/tools.py            7 agent tools + deterministic dispatch + grounding guard
 src/agent.py            Claude tool-use loop + system prompt
 src/agent_gemini.py     Gemini function-calling loop (same tools/prompt)
 src/llm.py              provider seam (model / client)
